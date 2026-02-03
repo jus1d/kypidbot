@@ -36,6 +36,40 @@ class Settings:
     output_path: str
 
 
+def parse_options() -> Settings:
+    args = sys.argv[1:]
+
+    if not args:
+        print("Usage: match input.json [-o output.json]", file=sys.stderr)
+        sys.exit(1)
+
+    output_path = "output.json"
+    input_path = None
+
+    i = 0
+    while i < len(args):
+        arg = args[i]
+
+        if arg == "-o":
+            if i + 1 >= len(args):
+                print("Error: -o requires an argument", file=sys.stderr)
+                sys.exit(1)
+            output_path = args[i + 1]
+            i += 2
+        else:
+            if input_path is not None:
+                print("Error: multiple input files specified", file=sys.stderr)
+                sys.exit(1)
+            input_path = arg
+            i += 1
+
+    if input_path is None:
+        print("Error: input file not specified", file=sys.stderr)
+        sys.exit(1)
+
+    return Settings(input_path=input_path, output_path=output_path)
+
+
 def parse_users_from_json(path: str) -> list[User]:
     with open(path) as f:
         data = json.load(f)
@@ -123,40 +157,6 @@ def match_people(interests: list[str], users: list[User]) -> list[Pair]:
             used.add(j)
 
     return pairs
-
-
-def parse_options() -> Settings:
-    args = sys.argv[1:]
-
-    if not args:
-        print("Usage: match input.json [-o output.json]", file=sys.stderr)
-        sys.exit(1)
-
-    output_path = "output.json"
-    input_path = None
-
-    i = 0
-    while i < len(args):
-        arg = args[i]
-
-        if arg == "-o":
-            if i + 1 >= len(args):
-                print("Error: -o requires an argument", file=sys.stderr)
-                sys.exit(1)
-            output_path = args[i + 1]
-            i += 2
-        else:
-            if input_path is not None:
-                print("Error: multiple input files specified", file=sys.stderr)
-                sys.exit(1)
-            input_path = arg
-            i += 1
-
-    if input_path is None:
-        print("Error: input file not specified", file=sys.stderr)
-        sys.exit(1)
-
-    return Settings(input_path=input_path, output_path=output_path)
 
 
 if __name__ == "__main__":
