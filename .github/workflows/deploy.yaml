@@ -6,7 +6,7 @@ on:
       - master
 
 env:
-  IMAGE: ghcr.io/jus1d/kupidbot
+  IMAGE: ghcr.io/jus1d/kypidbot
 
 jobs:
   deploy:

@@ -1,4 +1,4 @@
-# Kupidbot
+# Kypidbot
 
 ## Quick Start
 
