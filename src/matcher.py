@@ -112,11 +112,13 @@ def extract_preferences(users: list[User]) -> Preferences:
     return preferences
 
 
-def match_people(interests: list[str], users: list[User]) -> list[Pair]:
+def match_people(users: list[User]) -> list[Pair]:
     model = SentenceTransformer(
         "paraphrase-multilingual-MiniLM-L12-v2",
         token=HF_TOKEN,
     )
+
+    interests = [u.interests for u in users]
     vectors = model.encode(interests)
 
     sim_matrix = cosine_similarity(vectors)
@@ -189,7 +191,6 @@ if __name__ == "__main__":
     opts = parse_options()
 
     users = parse_users_from_json(opts.input_path)
-    interests = [u.interests for u in users]
 
-    pairs = match_people(interests, users)
+    pairs = match_people(users)
     write_pairs_as_json(pairs, opts.output_path)
