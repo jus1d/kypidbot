@@ -29,7 +29,7 @@ class User:
     username: str
     sex: str
     interests: str
-    free_time: str 
+    free_time: str
 
 
 @dataclass
@@ -96,7 +96,6 @@ def write_pairs_as_json(pairs: list[Pair], path: str):
             },
             "score": score,
             "free_time": pair_free_time,
-
         }
         for i, j, score, pair_free_time in pairs
     ]
@@ -151,19 +150,24 @@ def match_people(users: list[User]) -> list[Pair]:
             b_wants_a = j in preferences and a.username in preferences[j]
 
             if a_wants_b and b_wants_a:  # full match
-                pair_free_time = ''.join('1' if users[i].free_time[k] == '1' and users[j].free_time[k] == '1' else '0' for k in range(6))
+                pair_free_time = "".join(
+                    "1"
+                    if users[i].free_time[k] == "1" and users[j].free_time[k] == "1"
+                    else "0"
+                    for k in range(6)
+                )
 
                 score = float(sim_matrix[i, j])
 
-                if '1' in pair_free_time:
+                if "1" in pair_free_time:
                     pairs.append((i, j, round(score, 3), pair_free_time))
                 else:
-                    pairs.append((i, j, round(score, 3), "БЕДА")) # TODO: исправить БЕДУ
+                    # TODO: исправить БЕДУ
+                    pairs.append((i, j, round(score, 3), "БЕДА"))
 
                 used.add(i)
                 used.add(j)
                 break
-
 
     # match the remaining pairs greedily
     scores = []
@@ -187,14 +191,17 @@ def match_people(users: list[User]) -> list[Pair]:
             if a_wants_b or b_wants_a:  # semi-match
                 score += 0.3
 
-            pair_free_time = ''.join('1' if a.free_time[k] == '1' and b.free_time[k] == '1' else '0' for k in range(6))
+            pair_free_time = "".join(
+                "1" if a.free_time[k] == "1" and b.free_time[k] == "1" else "0"
+                for k in range(6)
+            )
 
             scores.append((score, i, j, pair_free_time))
 
     scores.sort(reverse=True)
 
     for score, i, j, pair_free_time in scores:
-        if i not in used and j not in used and '1' in pair_free_time:
+        if i not in used and j not in used and "1" in pair_free_time:
             pairs.append((i, j, round(score, 3), pair_free_time))
             used.add(i)
             used.add(j)
