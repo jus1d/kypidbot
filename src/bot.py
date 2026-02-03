@@ -31,6 +31,9 @@ with open(messages_path, encoding="utf-8") as f:
 
 db = Database(DB_PATH)
 
+# Users awaiting sticker recording (in-memory, dev tool)
+awaiting_sticker: set[int] = set()
+
 TIME_RANGES = [
     "10:00 -- 12:00",
     "12:00 -- 14:00",
@@ -191,6 +194,32 @@ async def time_button_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> 
     await query.edit_message_reply_markup(reply_markup=keyboard)
 
 
+async def stickerid_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle /stickerid command - wait for sticker and print its file_id."""
+    if not update.message or not update.effective_user:
+        return
+
+    awaiting_sticker.add(update.effective_user.id)
+    await update.message.reply_text("Send me a sticker and I'll print its file_id.")
+
+
+async def sticker_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle sticker messages."""
+    if not update.message or not update.effective_user or not update.message.sticker:
+        return
+
+    user_id = update.effective_user.id
+    if user_id not in awaiting_sticker:
+        return
+
+    awaiting_sticker.discard(user_id)
+    sticker = update.message.sticker
+    logger.info(f"Sticker file_id: {sticker.file_id}")
+    await update.message.reply_text(
+        f"```\n{sticker.file_id}\n```", parse_mode="Markdown"
+    )
+
+
 async def match_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /match command - match all verified users into pairs."""
     if not update.message:
@@ -202,6 +231,10 @@ async def match_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text("Not enough verified users to match.")
         return
 
+    sticker_msg = await update.message.reply_sticker(
+        "CAACAgIAAxkBAANtaYKDDtR5d1478iPkCrZr2xnZOpMAAgIBAAJWnb0KTuJsgctA5P84BA"
+    )
+
     pairs = match_people(users)
 
     db.clear_pairs()
@@ -212,6 +245,7 @@ async def match_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 
         db.save_pair(dill.id, doe.id, score, time_intersection)
 
+    await sticker_msg.delete()
     await update.message.reply_text(
         f"Matching complete! Created {len(pairs)} pairs from {len(users)} users."
     )
@@ -222,6 +256,7 @@ def main() -> None:
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("match", match_command))
+    application.add_handler(CommandHandler("stickerid", stickerid_command))
 
     application.add_handler(CallbackQueryHandler(sex_callback, pattern="^sex_"))
     application.add_handler(
@@ -231,6 +266,7 @@ def main() -> None:
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler)
     )
+    application.add_handler(MessageHandler(filters.Sticker.ALL, sticker_handler))
 
     logger.info("Starting bot...")
     application.run_polling(allowed_updates=Update.ALL_TYPES)

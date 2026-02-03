@@ -20,7 +20,7 @@ class User:
 
 
 class Database:
-    def __init__(self, db_path: str = "kupidbot.db"):
+    def __init__(self, db_path: str = "kypidbot.db"):
         self.db_path = db_path
         self.init_db()
 
