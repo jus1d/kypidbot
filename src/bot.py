@@ -217,6 +217,114 @@ async def time_button_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> 
     await query.edit_message_reply_markup(reply_markup=keyboard)
 
 
+async def confirm_meeting_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle meeting confirmation button clicks."""
+    query = update.callback_query
+    if not query or not query.data or not query.from_user or not context.bot:
+        return
+
+    await query.answer()
+
+    meeting_id = int(query.data.replace("confirm_meeting_", ""))
+    telegram_id = query.from_user.id
+
+    if db.confirm_meeting(meeting_id, telegram_id):
+        cancel_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                MESSAGES["meet"]["cancel_button"],
+                callback_data=f"cancel_meeting_{meeting_id}"
+            )]
+        ])
+
+        original_text = query.message.text
+        new_text = f"{original_text}\n\n{MESSAGES['meet']['confirmed']}"
+        await query.edit_message_text(
+            text=new_text,
+            reply_markup=cancel_keyboard
+        )
+
+        partner_id = db.get_partner_telegram_id(meeting_id, telegram_id)
+        if partner_id:
+            try:
+                await context.bot.send_message(
+                    chat_id=partner_id,
+                    text=MESSAGES["meet"]["partner_confirmed"]
+                )
+            except Exception as e:
+                logger.error(f"Failed to send confirmation to partner {partner_id}: {e}")
+
+        if db.both_confirmed(meeting_id):
+            meeting = db.get_meeting_by_id(meeting_id)
+            if meeting:
+                place = db.get_all_places()
+                place_desc = next((p["description"] for p in place if p["id"] == meeting["place_id"]), "")
+
+                final_message = MESSAGES["meet"]["both_confirmed"].format(
+                    place=place_desc,
+                    time=meeting["time"]
+                )
+
+                cancel_keyboard_final = InlineKeyboardMarkup([
+                    [InlineKeyboardButton(
+                        MESSAGES["meet"]["cancel_button"],
+                        callback_data=f"cancel_meeting_{meeting_id}"
+                    )]
+                ])
+
+                try:
+                    await context.bot.send_message(
+                        chat_id=telegram_id,
+                        text=final_message,
+                        reply_markup=cancel_keyboard_final
+                    )
+                except Exception as e:
+                    logger.error(f"Failed to send final confirmation to {telegram_id}: {e}")
+
+                if partner_id:
+                    try:
+                        await context.bot.send_message(
+                            chat_id=partner_id,
+                            text=final_message,
+                            reply_markup=cancel_keyboard_final
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to send final confirmation to {partner_id}: {e}")
+
+
+async def cancel_meeting_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle meeting cancellation button clicks."""
+    query = update.callback_query
+    if not query or not query.data or not query.from_user or not context.bot:
+        return
+
+    await query.answer()
+
+    meeting_id = int(query.data.replace("cancel_meeting_", ""))
+    telegram_id = query.from_user.id
+
+    if db.cancel_meeting(meeting_id, telegram_id):
+        partner_username = db.get_partner_username(meeting_id, telegram_id)
+        user_username = db.get_user_username_by_telegram_id(telegram_id)
+
+        await query.edit_message_text(
+            text=MESSAGES["meet"]["cancelled"].format(
+                partner_username=partner_username or "unknown"
+            )
+        )
+
+        partner_id = db.get_partner_telegram_id(meeting_id, telegram_id)
+        if partner_id:
+            try:
+                await context.bot.send_message(
+                    chat_id=partner_id,
+                    text=MESSAGES["meet"]["partner_cancelled"].format(
+                        partner_username=user_username or "unknown"
+                    )
+                )
+            except Exception as e:
+                logger.error(f"Failed to send cancellation to partner {partner_id}: {e}")
+
+
 @admin_only
 async def stickerid_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle /stickerid command - wait for sticker and print its file_id."""
@@ -344,7 +452,7 @@ async def meet_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         place = random.choice(places)
         meeting_time = pick_random_time(pair["time_intersection"])
 
-        db.save_meeting(pair["id"], place["id"], meeting_time)
+        meeting_id = db.save_meeting(pair["id"], place["id"], meeting_time)
 
         dill = db.get_user_by_id(pair["dill_id"])
         doe = db.get_user_by_id(pair["doe_id"])
@@ -355,13 +463,34 @@ async def meet_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 time=meeting_time
             )
 
+            keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton(
+                        MESSAGES["meet"]["confirm_button"],
+                        callback_data=f"confirm_meeting_{meeting_id}"
+                    ),
+                    InlineKeyboardButton(
+                        MESSAGES["meet"]["cancel_button"],
+                        callback_data=f"cancel_meeting_{meeting_id}"
+                    )
+                ]
+            ])
+
             try:
-                await context.bot.send_message(chat_id=dill["telegram_id"], text=message)
+                await context.bot.send_message(
+                    chat_id=dill["telegram_id"],
+                    text=message,
+                    reply_markup=keyboard
+                )
             except Exception as e:
                 logger.error(f"Failed to send message to {dill['telegram_id']}: {e}")
 
             try:
-                await context.bot.send_message(chat_id=doe["telegram_id"], text=message)
+                await context.bot.send_message(
+                    chat_id=doe["telegram_id"],
+                    text=message,
+                    reply_markup=keyboard
+                )
             except Exception as e:
                 logger.error(f"Failed to send message to {doe['telegram_id']}: {e}")
 
@@ -382,6 +511,8 @@ def main() -> None:
 
     application.add_handler(CallbackQueryHandler(sex_callback, pattern="^sex_"))
     application.add_handler(CallbackQueryHandler(time_button_callback, pattern="^(time_|confirm_time)"))
+    application.add_handler(CallbackQueryHandler(confirm_meeting_callback, pattern="^confirm_meeting_"))
+    application.add_handler(CallbackQueryHandler(cancel_meeting_callback, pattern="^cancel_meeting_"))
 
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))
     application.add_handler(MessageHandler(filters.Sticker.ALL, sticker_handler))

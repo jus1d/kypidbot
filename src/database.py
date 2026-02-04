@@ -81,6 +81,10 @@ class Database:
                     pair_id INTEGER NOT NULL,
                     place_id INTEGER NOT NULL,
                     time TEXT NOT NULL,
+                    dill_confirmed INTEGER DEFAULT 0,
+                    doe_confirmed INTEGER DEFAULT 0,
+                    dill_cancelled INTEGER DEFAULT 0,
+                    doe_cancelled INTEGER DEFAULT 0,
                     FOREIGN KEY (pair_id) REFERENCES pairs(id),
                     FOREIGN KEY (place_id) REFERENCES places(id)
                 )
@@ -282,14 +286,16 @@ class Database:
             cursor = conn.execute("SELECT * FROM pairs")
             return cursor.fetchall()
 
-    def save_meeting(self, pair_id: int, place_id: int, time: str) -> None:
-        """Save a meeting."""
+    def save_meeting(self, pair_id: int, place_id: int, time: str) -> int:
+        """Save a meeting. Returns meeting_id."""
         with self.get_connection() as conn:
-            conn.execute(
-                "INSERT INTO meetings (pair_id, place_id, time) VALUES (?, ?, ?)",
+            cursor = conn.execute(
+                "INSERT INTO meetings (pair_id, place_id, time) VALUES (?, ?, ?) RETURNING id",
                 (pair_id, place_id, time),
             )
+            row = cursor.fetchone()
             conn.commit()
+            return row["id"]
 
     def get_user_by_id(self, user_id: int) -> Optional[sqlite3.Row]:
         """Get user by id (not telegram_id)."""
@@ -299,3 +305,140 @@ class Database:
                 (user_id,),
             )
             return cursor.fetchone()
+
+    def get_meeting_by_id(self, meeting_id: int) -> Optional[sqlite3.Row]:
+        """Get meeting by id."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM meetings WHERE id = ?",
+                (meeting_id,),
+            )
+            return cursor.fetchone()
+
+    def get_pair_by_id(self, pair_id: int) -> Optional[sqlite3.Row]:
+        """Get pair by id."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM pairs WHERE id = ?",
+                (pair_id,),
+            )
+            return cursor.fetchone()
+
+    def confirm_meeting(self, meeting_id: int, telegram_id: int) -> bool:
+        """Confirm meeting attendance. Returns True if confirmed, False if user not in this meeting."""
+        with self.get_connection() as conn:
+            meeting = self.get_meeting_by_id(meeting_id)
+            if not meeting:
+                return False
+
+            pair = self.get_pair_by_id(meeting["pair_id"])
+            if not pair:
+                return False
+
+            dill = self.get_user_by_id(pair["dill_id"])
+            doe = self.get_user_by_id(pair["doe_id"])
+
+            if dill and dill["telegram_id"] == telegram_id:
+                conn.execute(
+                    "UPDATE meetings SET dill_confirmed = 1 WHERE id = ?",
+                    (meeting_id,),
+                )
+                conn.commit()
+                return True
+            elif doe and doe["telegram_id"] == telegram_id:
+                conn.execute(
+                    "UPDATE meetings SET doe_confirmed = 1 WHERE id = ?",
+                    (meeting_id,),
+                )
+                conn.commit()
+                return True
+
+        return False
+
+    def get_partner_telegram_id(self, meeting_id: int, telegram_id: int) -> Optional[int]:
+        """Get partner's telegram_id for a given meeting."""
+        meeting = self.get_meeting_by_id(meeting_id)
+        if not meeting:
+            return None
+
+        pair = self.get_pair_by_id(meeting["pair_id"])
+        if not pair:
+            return None
+
+        dill = self.get_user_by_id(pair["dill_id"])
+        doe = self.get_user_by_id(pair["doe_id"])
+
+        if dill and dill["telegram_id"] == telegram_id:
+            return doe["telegram_id"] if doe else None
+        elif doe and doe["telegram_id"] == telegram_id:
+            return dill["telegram_id"] if dill else None
+
+        return None
+
+    def get_partner_username(self, meeting_id: int, telegram_id: int) -> Optional[str]:
+        """Get partner's username for a given meeting."""
+        meeting = self.get_meeting_by_id(meeting_id)
+        if not meeting:
+            return None
+
+        pair = self.get_pair_by_id(meeting["pair_id"])
+        if not pair:
+            return None
+
+        dill = self.get_user_by_id(pair["dill_id"])
+        doe = self.get_user_by_id(pair["doe_id"])
+
+        if dill and dill["telegram_id"] == telegram_id:
+            return doe["username"] if doe else None
+        elif doe and doe["telegram_id"] == telegram_id:
+            return dill["username"] if dill else None
+
+        return None
+
+    def get_user_username_by_telegram_id(self, telegram_id: int) -> Optional[str]:
+        """Get username by telegram_id."""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT username FROM users WHERE telegram_id = ?",
+                (telegram_id,),
+            )
+            row = cursor.fetchone()
+            return row["username"] if row else None
+
+    def both_confirmed(self, meeting_id: int) -> bool:
+        """Check if both participants confirmed the meeting."""
+        meeting = self.get_meeting_by_id(meeting_id)
+        if not meeting:
+            return False
+        return bool(meeting["dill_confirmed"]) and bool(meeting["doe_confirmed"])
+
+    def cancel_meeting(self, meeting_id: int, telegram_id: int) -> bool:
+        """Cancel meeting attendance. Returns True if cancelled, False if user not in this meeting."""
+        with self.get_connection() as conn:
+            meeting = self.get_meeting_by_id(meeting_id)
+            if not meeting:
+                return False
+
+            pair = self.get_pair_by_id(meeting["pair_id"])
+            if not pair:
+                return False
+
+            dill = self.get_user_by_id(pair["dill_id"])
+            doe = self.get_user_by_id(pair["doe_id"])
+
+            if dill and dill["telegram_id"] == telegram_id:
+                conn.execute(
+                    "UPDATE meetings SET dill_cancelled = 1 WHERE id = ?",
+                    (meeting_id,),
+                )
+                conn.commit()
+                return True
+            elif doe and doe["telegram_id"] == telegram_id:
+                conn.execute(
+                    "UPDATE meetings SET doe_cancelled = 1 WHERE id = ?",
+                    (meeting_id,),
+                )
+                conn.commit()
+                return True
+
+        return False
