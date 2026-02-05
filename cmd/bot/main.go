@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -9,7 +8,7 @@ import (
 
 	"github.com/jus1d/kypidbot/internal/config"
 	"github.com/jus1d/kypidbot/internal/delivery/telegram"
-	"github.com/jus1d/kypidbot/internal/repository/sqlite"
+	"github.com/jus1d/kypidbot/internal/repository/postgres"
 	"github.com/jus1d/kypidbot/internal/usecase"
 )
 
@@ -23,23 +22,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	db, err := sqlite.New(cfg.DBPath)
+	db, err := postgres.New(cfg.DatabaseURL)
 	if err != nil {
 		log.Error("open database", "err", err)
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	if err := db.Migrate(context.Background()); err != nil {
-		log.Error("migrate database", "err", err)
-		os.Exit(1)
-	}
-	log.Info("database initialized")
-
-	userRepo := sqlite.NewUserRepo(db)
-	pairRepo := sqlite.NewPairRepo(db)
-	placeRepo := sqlite.NewPlaceRepo(db)
-	meetingRepo := sqlite.NewMeetingRepo(db)
+	userRepo := postgres.NewUserRepo(db)
+	pairRepo := postgres.NewPairRepo(db)
+	placeRepo := postgres.NewPlaceRepo(db)
+	meetingRepo := postgres.NewMeetingRepo(db)
 
 	registration := usecase.NewRegistration(userRepo)
 	admin := usecase.NewAdmin(userRepo)

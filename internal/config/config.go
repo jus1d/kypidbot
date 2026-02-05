@@ -8,7 +8,7 @@ import (
 type Config struct {
 	TelegramToken string
 	OllamaURL     string
-	DBPath        string
+	DatabaseURL   string
 }
 
 func MustLoad() Config {
@@ -22,14 +22,14 @@ func MustLoad() Config {
 		ollamaURL = "http://localhost:11434"
 	}
 
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "kypidbot.db"
+	databaseURL := os.Getenv("DATABASE_URL")
+	if databaseURL == "" {
+		databaseURL = "postgres://postgres:postgres@localhost:5432/kypidbot?sslmode=disable"
 	}
 
 	return Config{
 		TelegramToken: token,
 		OllamaURL:     ollamaURL,
-		DBPath:        dbPath,
+		DatabaseURL:   databaseURL,
 	}
 }

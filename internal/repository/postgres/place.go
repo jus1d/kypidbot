@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -17,7 +17,7 @@ func NewPlaceRepo(d *DB) *PlaceRepo {
 
 func (r *PlaceRepo) SavePlace(ctx context.Context, description string) error {
 	_, err := r.db.ExecContext(ctx,
-		`INSERT INTO places (description) VALUES (?)`, description)
+		`INSERT INTO places (description) VALUES ($1)`, description)
 	return err
 }
 

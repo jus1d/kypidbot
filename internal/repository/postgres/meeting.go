@@ -1,4 +1,4 @@
-package sqlite
+package postgres
 
 import (
 	"context"
@@ -17,26 +17,24 @@ func NewMeetingRepo(d *DB) *MeetingRepo {
 }
 
 func (r *MeetingRepo) SaveMeeting(ctx context.Context, m *domain.Meeting) (int64, error) {
-	res, err := r.db.ExecContext(ctx, `
+	var id int64
+	err := r.db.QueryRowContext(ctx, `
 		INSERT INTO meetings (pair_id, place_id, time)
-		VALUES (?, ?, ?)`,
+		VALUES ($1, $2, $3)
+		RETURNING id`,
 		m.PairID, m.PlaceID, m.Time,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return res.LastInsertId()
+	).Scan(&id)
+	return id, err
 }
 
 func (r *MeetingRepo) GetMeetingByID(ctx context.Context, id int64) (*domain.Meeting, error) {
 	var m domain.Meeting
-	var dillConf, doeConf, dillCanc, doeCanc int
 
 	err := r.db.QueryRowContext(ctx, `
 		SELECT id, pair_id, place_id, time, dill_confirmed, doe_confirmed, dill_cancelled, doe_cancelled
-		FROM meetings WHERE id = ?`, id).Scan(
+		FROM meetings WHERE id = $1`, id).Scan(
 		&m.ID, &m.PairID, &m.PlaceID, &m.Time,
-		&dillConf, &doeConf, &dillCanc, &doeCanc,
+		&m.DillConfirmed, &m.DoeConfirmed, &m.DillCancelled, &m.DoeCancelled,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -44,11 +42,6 @@ func (r *MeetingRepo) GetMeetingByID(ctx context.Context, id int64) (*domain.Mee
 	if err != nil {
 		return nil, err
 	}
-
-	m.DillConfirmed = dillConf == 1
-	m.DoeConfirmed = doeConf == 1
-	m.DillCancelled = dillCanc == 1
-	m.DoeCancelled = doeCanc == 1
 
 	return &m, nil
 }
@@ -59,7 +52,7 @@ func (r *MeetingRepo) ConfirmMeeting(ctx context.Context, meetingID int64, isDil
 		col = "dill_confirmed"
 	}
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE meetings SET `+col+` = 1 WHERE id = ?`, meetingID)
+		`UPDATE meetings SET `+col+` = TRUE WHERE id = $1`, meetingID)
 	return err
 }
 
@@ -69,6 +62,6 @@ func (r *MeetingRepo) CancelMeeting(ctx context.Context, meetingID int64, isDill
 		col = "dill_cancelled"
 	}
 	_, err := r.db.ExecContext(ctx,
-		`UPDATE meetings SET `+col+` = 1 WHERE id = ?`, meetingID)
+		`UPDATE meetings SET `+col+` = TRUE WHERE id = $1`, meetingID)
 	return err
 }
