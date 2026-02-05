@@ -30,16 +30,12 @@ with open(messages_path, encoding="utf-8") as f:
 
 db = Database(DB_PATH)
 
-# Users awaiting sticker recording (in-memory, dev tool)
-awaiting_sticker: set[int] = set()
-
-
 def admin_only(func):
     """Decorator to restrict command to admins only."""
 
     @wraps(func)
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
-        if not update.effective_user or not db.is_admin(update.effective_user.id):
+        if not update.effective_user or not await db.is_admin(update.effective_user.id):
             return
         return await func(update, context)
 
@@ -118,7 +114,7 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 
     user = update.effective_user
 
-    db.save_user(
+    await db.save_user(
         telegram_id=user.id,
         username=user.username,
         first_name=user.first_name,
@@ -128,7 +124,7 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         is_premium=user.is_premium,
     )
 
-    db.set_user_state(user.id, "awaiting_sex")
+    await db.set_user_state(user.id, "awaiting_sex")
 
     await update.message.reply_text(MESSAGES["start"]["welcome"])
 
@@ -145,7 +141,7 @@ async def start(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
         ]
     )
 
-    await update.message.reply_text(MESSAGES["start"]["ask_sex"], reply_markup=keyboard)
+    await update.message.reply_text(MESSAGES["start"]["ask_sex"]['new'], reply_markup=keyboard)
 
 
 async def sex_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
@@ -159,8 +155,8 @@ async def sex_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     user = query.from_user
     sex = "male" if query.data == "sex_male" else "female"
 
-    db.set_user_sex(user.id, sex)
-    db.set_user_state(user.id, "awaiting_about")
+    await db.set_user_sex(user.id, sex)
+    await db.set_user_state(user.id, "awaiting_about")
 
     await query.edit_message_text(MESSAGES["sex_selected"])
 
@@ -171,13 +167,13 @@ async def text_message_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     user = update.effective_user
-    state = db.get_user_state(user.id)
+    state = await db.get_user_state(user.id)
 
     if state == "awaiting_about":
-        db.set_user_about(user.id, update.message.text)
-        db.set_user_state(user.id, "awaiting_time")
+        await db.set_user_about(user.id, update.message.text)
+        await db.set_user_state(user.id, "awaiting_time")
 
-        binary_str = db.get_time_ranges(user.id)
+        binary_str = await db.get_time_ranges(user.id)
         selected_times = binary_to_set(binary_str)
         keyboard = create_time_keyboard(selected_times)
 
@@ -195,13 +191,23 @@ async def time_button_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> 
     user = query.from_user
 
     if query.data == "confirm_time":
-        db.set_user_state(user.id, "completed")
-        await query.edit_message_text(MESSAGES["completed"]["message"])
+        resubmit_keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                MESSAGES["buttons"]["resubmit"],
+                callback_data="resubmit"
+            )]
+        ])
+
+        await db.set_user_state(user.id, "completed")
+        await query.edit_message_text(
+            text=MESSAGES["completed"]["message"],
+            reply_markup=resubmit_keyboard,
+        ) # here
         return
 
     time_range = query.data.replace("time_", "")
 
-    binary_str = db.get_time_ranges(user.id)
+    binary_str = await db.get_time_ranges(user.id)
     selected = binary_to_set(binary_str)
 
     if time_range in selected:
@@ -210,7 +216,7 @@ async def time_button_callback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> 
         selected.add(time_range)
 
     new_binary = set_to_binary(selected)
-    db.save_time_ranges(user.id, new_binary)
+    await db.save_time_ranges(user.id, new_binary)
 
     keyboard = create_time_keyboard(selected)
 
@@ -228,7 +234,7 @@ async def confirm_meeting_callback(update: Update, context: ContextTypes.DEFAULT
     meeting_id = int(query.data.replace("confirm_meeting_", ""))
     telegram_id = query.from_user.id
 
-    if db.confirm_meeting(meeting_id, telegram_id):
+    if await db.confirm_meeting(meeting_id, telegram_id):
         cancel_keyboard = InlineKeyboardMarkup([
             [InlineKeyboardButton(
                 MESSAGES["meet"]["cancel_button"],
@@ -243,7 +249,7 @@ async def confirm_meeting_callback(update: Update, context: ContextTypes.DEFAULT
             reply_markup=cancel_keyboard
         )
 
-        partner_id = db.get_partner_telegram_id(meeting_id, telegram_id)
+        partner_id = await db.get_partner_telegram_id(meeting_id, telegram_id)
         if partner_id:
             try:
                 await context.bot.send_message(
@@ -253,15 +259,15 @@ async def confirm_meeting_callback(update: Update, context: ContextTypes.DEFAULT
             except Exception as e:
                 logger.error(f"Failed to send confirmation to partner {partner_id}: {e}")
 
-        if db.both_confirmed(meeting_id):
-            meeting = db.get_meeting_by_id(meeting_id)
+        if await db.both_confirmed(meeting_id):
+            meeting = await db.get_meeting_by_id(meeting_id)
             if meeting:
-                place = db.get_all_places()
-                place_desc = next((p["description"] for p in place if p["id"] == meeting["place_id"]), "")
+                places = await db.get_all_places()
+                place_desc = next((p.description for p in places if p.id == meeting.place_id), "")
 
                 final_message = MESSAGES["meet"]["both_confirmed"].format(
                     place=place_desc,
-                    time=meeting["time"]
+                    time=meeting.time
                 )
 
                 cancel_keyboard_final = InlineKeyboardMarkup([
@@ -302,9 +308,9 @@ async def cancel_meeting_callback(update: Update, context: ContextTypes.DEFAULT_
     meeting_id = int(query.data.replace("cancel_meeting_", ""))
     telegram_id = query.from_user.id
 
-    if db.cancel_meeting(meeting_id, telegram_id):
-        partner_username = db.get_partner_username(meeting_id, telegram_id)
-        user_username = db.get_user_username_by_telegram_id(telegram_id)
+    if await db.cancel_meeting(meeting_id, telegram_id):
+        partner_username = await db.get_partner_username(meeting_id, telegram_id)
+        user_username = await db.get_user_username_by_telegram_id(telegram_id)
 
         await query.edit_message_text(
             text=MESSAGES["meet"]["cancelled"].format(
@@ -312,7 +318,7 @@ async def cancel_meeting_callback(update: Update, context: ContextTypes.DEFAULT_
             )
         )
 
-        partner_id = db.get_partner_telegram_id(meeting_id, telegram_id)
+        partner_id = await db.get_partner_telegram_id(meeting_id, telegram_id)
         if partner_id:
             try:
                 await context.bot.send_message(
@@ -325,14 +331,29 @@ async def cancel_meeting_callback(update: Update, context: ContextTypes.DEFAULT_
                 logger.error(f"Failed to send cancellation to partner {partner_id}: {e}")
 
 
-@admin_only
-async def stickerid_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle /stickerid command - wait for sticker and print its file_id."""
-    if not update.message or not update.effective_user:
+async def resubmit_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    if not query or not query.data or not query.from_user or not context.bot:
         return
 
-    awaiting_sticker.add(update.effective_user.id)
-    await update.message.reply_text(MESSAGES["stickerid"]["prompt"])
+    user = query.from_user
+
+    await db.set_user_state(user.id, "awaiting_sex")
+
+    keyboard = InlineKeyboardMarkup(
+        [
+            [
+                InlineKeyboardButton(
+                    MESSAGES["buttons"]["sex"]["male"], callback_data="sex_male"
+                ),
+                InlineKeyboardButton(
+                    MESSAGES["buttons"]["sex"]["female"], callback_data="sex_female"
+                ),
+            ]
+        ]
+    )
+
+    await query.edit_message_text(MESSAGES["start"]["ask_sex"]["resubmit"], reply_markup=keyboard)
 
 
 @admin_only
@@ -341,11 +362,6 @@ async def sticker_handler(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.effective_user or not update.message.sticker:
         return
 
-    user_id = update.effective_user.id
-    if user_id not in awaiting_sticker:
-        return
-
-    awaiting_sticker.discard(user_id)
     sticker = update.message.sticker
     logger.info(f"Sticker file_id: {sticker.file_id}")
     await update.message.reply_text(f"```\n{sticker.file_id}\n```", parse_mode="Markdown")
@@ -362,17 +378,17 @@ async def promote_command(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
 
     username = context.args[0].lstrip("@")
-    target_user = db.get_user_by_username(username)
+    target_user = await db.get_user_by_username(username)
 
     if not target_user:
         await update.message.reply_text(MESSAGES["promote"]["user_not_found"].format(username=username))
         return
 
-    if target_user["is_admin"]:
+    if target_user.is_admin:
         await update.message.reply_text(MESSAGES["promote"]["already_admin"].format(username=username))
         return
 
-    db.set_admin(target_user["telegram_id"], True)
+    await db.set_admin(target_user.telegram_id, True)
     await update.message.reply_text(MESSAGES["promote"]["success"].format(username=username))
 
 
@@ -387,17 +403,17 @@ async def demote_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     username = context.args[0].lstrip("@")
-    target_user = db.get_user_by_username(username)
+    target_user = await db.get_user_by_username(username)
 
     if not target_user:
         await update.message.reply_text(MESSAGES["demote"]["user_not_found"].format(username=username))
         return
 
-    if not target_user["is_admin"]:
+    if not target_user.is_admin:
         await update.message.reply_text(MESSAGES["demote"]["not_admin"].format(username=username))
         return
 
-    db.set_admin(target_user["telegram_id"], False)
+    await db.set_admin(target_user.telegram_id, False)
     await update.message.reply_text(MESSAGES["demote"]["success"].format(username=username))
 
 
@@ -407,7 +423,7 @@ async def match_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message:
         return
 
-    users = db.get_verified_users()
+    users = await db.get_verified_users()
 
     if len(users) < 2:
         await update.message.reply_text(MESSAGES["match"]["not_enough_users"])
@@ -419,19 +435,19 @@ async def match_command(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
 
     pairs, full_matches = match_people(users)
 
-    db.clear_pairs()
+    await db.clear_pairs()
 
     for i, j, score, time_intersection in pairs:
         dill = users[i]
         doe = users[j]
 
-        db.save_pair(dill.id, doe.id, score, time_intersection, is_fullmatch=False)
+        await db.save_pair(dill.id, doe.id, score, time_intersection, is_fullmatch=False)
 
     for i, j, score in full_matches:
         dill = users[i]
         doe = users[j]
 
-        db.save_pair(dill.id, doe.id, score, "000000", is_fullmatch=True)
+        await db.save_pair(dill.id, doe.id, score, "000000", is_fullmatch=True)
 
     await sticker_msg.delete()
 
@@ -447,14 +463,14 @@ async def meet_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if not update.message or not context.bot:
         return
 
-    regular_pairs = db.get_regular_pairs()
-    fullmatch_pairs = db.get_full_pairs()
+    regular_pairs = await db.get_regular_pairs()
+    fullmatch_pairs = await db.get_full_pairs()
 
     if not regular_pairs and not fullmatch_pairs:
         await update.message.reply_text(MESSAGES["meet"]["no_pairs"])
         return
 
-    places = db.get_all_places()
+    places = await db.get_all_places()
     if not places and regular_pairs:
         await update.message.reply_text(MESSAGES["meet"]["no_places"])
         return
@@ -463,16 +479,16 @@ async def meet_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     for pair in regular_pairs:
         place = random.choice(places)
-        meeting_time = pick_random_time(pair["time_intersection"])
+        meeting_time = pick_random_time(pair.time_intersection)
 
-        meeting_id = db.save_meeting(pair["id"], place["id"], meeting_time)
+        meeting_id = await db.save_meeting(pair.id, place.id, meeting_time)
 
-        dill = db.get_user_by_id(pair["dill_id"])
-        doe = db.get_user_by_id(pair["doe_id"])
+        dill = await db.get_user_by_id(pair.dill_id)
+        doe = await db.get_user_by_id(pair.doe_id)
 
         if dill and doe:
             message = MESSAGES["meet"]["notification"].format(
-                place=place["description"],
+                place=place.description,
                 time=meeting_time
             )
 
@@ -491,61 +507,66 @@ async def meet_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
             try:
                 await context.bot.send_message(
-                    chat_id=dill["telegram_id"],
+                    chat_id=dill.telegram_id,
                     text=message,
                     reply_markup=keyboard
                 )
             except Exception as e:
-                logger.error(f"Failed to send message to {dill['telegram_id']}: {e}")
+                logger.error(f"Failed to send message to {dill.telegram_id}: {e}")
 
             try:
                 await context.bot.send_message(
-                    chat_id=doe["telegram_id"],
+                    chat_id=doe.telegram_id,
                     text=message,
                     reply_markup=keyboard
                 )
             except Exception as e:
-                logger.error(f"Failed to send message to {doe['telegram_id']}: {e}")
+                logger.error(f"Failed to send message to {doe.telegram_id}: {e}")
 
             count += 1
 
     for pair in fullmatch_pairs:
-        dill = db.get_user_by_id(pair["dill_id"])
-        doe = db.get_user_by_id(pair["doe_id"])
+        dill = await db.get_user_by_id(pair.dill_id)
+        doe = await db.get_user_by_id(pair.doe_id)
 
         if dill and doe:
             try:
                 await context.bot.send_message(
-                    chat_id=dill["telegram_id"],
+                    chat_id=dill.telegram_id,
                     text=MESSAGES["meet"]["full_match"].format(
-                        partner_username=doe["username"] or "unknown"
+                        partner_username=doe.username or "unknown"
                     )
                 )
             except Exception as e:
-                logger.error(f"Failed to send full match to {dill['telegram_id']}: {e}")
+                logger.error(f"Failed to send full match to {dill.telegram_id}: {e}")
 
             try:
                 await context.bot.send_message(
-                    chat_id=doe["telegram_id"],
+                    chat_id=doe.telegram_id,
                     text=MESSAGES["meet"]["full_match"].format(
-                        partner_username=dill["username"] or "unknown"
+                        partner_username=dill.username or "unknown"
                     )
                 )
             except Exception as e:
-                logger.error(f"Failed to send full match to {doe['telegram_id']}: {e}")
+                logger.error(f"Failed to send full match to {doe.telegram_id}: {e}")
 
             count += 1
 
     await update.message.reply_text(MESSAGES["meet"]["success"].format(count=count))
 
 
+async def post_init(application: Application) -> None:
+    """Initialize database after application starts."""
+    await db.init_db()
+    logger.info("Database initialized")
+
+
 def main() -> None:
-    application = Application.builder().token(TELEGRAM_TOKEN).build()
+    application = Application.builder().token(TELEGRAM_TOKEN).post_init(post_init).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("match", match_command))
     application.add_handler(CommandHandler("meet", meet_command))
-    application.add_handler(CommandHandler("stickerid", stickerid_command))
     application.add_handler(CommandHandler("promote", promote_command))
     application.add_handler(CommandHandler("demote", demote_command))
 
@@ -553,6 +574,7 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(time_button_callback, pattern="^(time_|confirm_time)"))
     application.add_handler(CallbackQueryHandler(confirm_meeting_callback, pattern="^confirm_meeting_"))
     application.add_handler(CallbackQueryHandler(cancel_meeting_callback, pattern="^cancel_meeting_"))
+    application.add_handler(CallbackQueryHandler(resubmit_callback, pattern="resubmit"))
 
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_message_handler))
     application.add_handler(MessageHandler(filters.Sticker.ALL, sticker_handler))
