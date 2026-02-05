@@ -15,7 +15,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 
 from config import HF_TOKEN
-from database import User
+from database import UserModel
 
 logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
 logging.getLogger("transformers").setLevel(logging.ERROR)
@@ -66,32 +66,32 @@ def parse_options() -> Settings:
     return Settings(input_path=input_path, output_path=output_path)
 
 
-def parse_users_from_json(path: str) -> list[User]:
+def parse_users_from_json(path: str) -> list[UserModel]:
     with open(path) as f:
         data = json.load(f)
 
     users = []
     for i, u in enumerate(data["users"]):
-        users.append(
-            User(
-                id=i,
-                telegram_id=0,
-                username=u.get("username"),
-                first_name=None,
-                last_name=None,
-                is_bot=False,
-                language_code=None,
-                is_premium=False,
-                sex=u.get("sex"),
-                about=u.get("about") or u.get("interests", ""),
-                state="completed",
-                time_ranges=u.get("time_ranges") or u.get("free_time", "000000"),
-            )
+        user = UserModel(
+            id=i,
+            telegram_id=0,
+            username=u.get("username"),
+            first_name=None,
+            last_name=None,
+            is_bot=False,
+            language_code=None,
+            is_premium=False,
+            sex=u.get("sex"),
+            about=u.get("about") or u.get("interests", ""),
+            state="completed",
+            time_ranges=u.get("time_ranges") or u.get("free_time", "000000"),
+            is_admin=False,
         )
+        users.append(user)
     return users
 
 
-def write_pairs_as_json(pairs: list[Pair], users: list[User], path: str):
+def write_pairs_as_json(pairs: list[Pair], users: list[UserModel], path: str):
     output = [
         {
             "a": {
@@ -116,7 +116,7 @@ def write_pairs_as_json(pairs: list[Pair], users: list[User], path: str):
         json.dump(output, f, ensure_ascii=False, indent=4)
 
 
-def extract_preferences(users: list[User]) -> Preferences:
+def extract_preferences(users: list[UserModel]) -> Preferences:
     preferences: Preferences = {}
     pattern = r"@(\w+)"
 
@@ -128,7 +128,7 @@ def extract_preferences(users: list[User]) -> Preferences:
     return preferences
 
 
-def match_people(users: list[User]) -> tuple[list[Pair], list[FullMatch]]:
+def match_people(users: list[UserModel]) -> tuple[list[Pair], list[FullMatch]]:
     model = SentenceTransformer(
         "paraphrase-multilingual-MiniLM-L12-v2",
         token=HF_TOKEN,
