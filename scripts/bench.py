@@ -3,8 +3,13 @@
 import subprocess
 import os
 
-MODELS = ['paraphrase-multilingual', 'mxbai-embed-large']
 BENCH_FOLDER = "./bench"
+MODELS = [
+    'paraphrase-multilingual',
+    'mxbai-embed-large',
+    'all-minilm',
+    'nomic-embed-text-v2-moe',
+]
 
 os.makedirs(BENCH_FOLDER, exist_ok=True)
 
