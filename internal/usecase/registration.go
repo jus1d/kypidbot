@@ -18,6 +18,10 @@ func (r *Registration) SaveUser(ctx context.Context, u *domain.User) error {
 	return r.users.SaveUser(ctx, u)
 }
 
+func (r *Registration) GetUser(ctx context.Context, telegramID int64) (*domain.User, error) {
+	return r.users.GetUser(ctx, telegramID)
+}
+
 func (r *Registration) SetState(ctx context.Context, telegramID int64, state string) error {
 	return r.users.SetUserState(ctx, telegramID, state)
 }
@@ -40,4 +44,16 @@ func (r *Registration) GetTimeRanges(ctx context.Context, telegramID int64) (str
 
 func (r *Registration) SaveTimeRanges(ctx context.Context, telegramID int64, timeRanges string) error {
 	return r.users.SaveTimeRanges(ctx, telegramID, timeRanges)
+}
+
+func (r *Registration) GetUserByReferralCode(ctx context.Context, code string) (*domain.User, error) {
+	return r.users.GetUserByReferralCode(ctx, code)
+}
+
+func (r *Registration) SetReferralCode(ctx context.Context, telegramID int64, code string) error {
+	return r.users.SetReferralCode(ctx, telegramID, code)
+}
+
+func (r *Registration) SetReferrer(ctx context.Context, telegramID int64, referrerID int64) error {
+	return r.users.SetReferrer(ctx, telegramID, referrerID)
 }

@@ -64,8 +64,8 @@ func (m *Matching) RunMatch(ctx context.Context) (*MatchResult, error) {
 		doe := users[p.J]
 
 		if err := m.meetings.SaveMeeting(ctx, &domain.Meeting{
-			DillID:      dill.ID,
-			DoeID:       doe.ID,
+			DillID:      dill.TelegramID,
+			DoeID:       doe.TelegramID,
 			PairScore:   p.Score,
 			IsFullmatch: false,
 		}); err != nil {
@@ -78,8 +78,8 @@ func (m *Matching) RunMatch(ctx context.Context) (*MatchResult, error) {
 		doe := users[fm.J]
 
 		if err := m.meetings.SaveMeeting(ctx, &domain.Meeting{
-			DillID:      dill.ID,
-			DoeID:       doe.ID,
+			DillID:      dill.TelegramID,
+			DoeID:       doe.TelegramID,
 			PairScore:   fm.Score,
 			IsFullmatch: true,
 		}); err != nil {

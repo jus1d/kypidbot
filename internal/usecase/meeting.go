@@ -73,11 +73,11 @@ func (m *Meeting) CreateMeetings(ctx context.Context) (*MeetResult, error) {
 	var result MeetResult
 
 	for _, mt := range regularMeetings {
-		dill, err := m.users.GetUserByID(ctx, mt.DillID)
+		dill, err := m.users.GetUser(ctx, mt.DillID)
 		if err != nil {
 			return nil, fmt.Errorf("get dill: %w", err)
 		}
-		doe, err := m.users.GetUserByID(ctx, mt.DoeID)
+		doe, err := m.users.GetUser(ctx, mt.DoeID)
 		if err != nil {
 			return nil, fmt.Errorf("get doe: %w", err)
 		}
@@ -104,11 +104,11 @@ func (m *Meeting) CreateMeetings(ctx context.Context) (*MeetResult, error) {
 	}
 
 	for _, mt := range fullMeetings {
-		dill, err := m.users.GetUserByID(ctx, mt.DillID)
+		dill, err := m.users.GetUser(ctx, mt.DillID)
 		if err != nil {
 			return nil, fmt.Errorf("get dill: %w", err)
 		}
-		doe, err := m.users.GetUserByID(ctx, mt.DoeID)
+		doe, err := m.users.GetUser(ctx, mt.DoeID)
 		if err != nil {
 			return nil, fmt.Errorf("get doe: %w", err)
 		}
@@ -134,11 +134,11 @@ func (m *Meeting) ConfirmMeeting(ctx context.Context, meetingID int64, telegramI
 		return false, err
 	}
 
-	dill, err := m.users.GetUserByID(ctx, meeting.DillID)
+	dill, err := m.users.GetUser(ctx, meeting.DillID)
 	if err != nil {
 		return false, err
 	}
-	doe, err := m.users.GetUserByID(ctx, meeting.DoeID)
+	doe, err := m.users.GetUser(ctx, meeting.DoeID)
 	if err != nil {
 		return false, err
 	}
@@ -159,11 +159,11 @@ func (m *Meeting) CancelMeeting(ctx context.Context, meetingID int64, telegramID
 		return false, err
 	}
 
-	dill, err := m.users.GetUserByID(ctx, meeting.DillID)
+	dill, err := m.users.GetUser(ctx, meeting.DillID)
 	if err != nil {
 		return false, err
 	}
-	doe, err := m.users.GetUserByID(ctx, meeting.DoeID)
+	doe, err := m.users.GetUser(ctx, meeting.DoeID)
 	if err != nil {
 		return false, err
 	}
@@ -192,11 +192,11 @@ func (m *Meeting) GetPartnerTelegramID(ctx context.Context, meetingID int64, tel
 		return 0, err
 	}
 
-	dill, err := m.users.GetUserByID(ctx, meeting.DillID)
+	dill, err := m.users.GetUser(ctx, meeting.DillID)
 	if err != nil {
 		return 0, err
 	}
-	doe, err := m.users.GetUserByID(ctx, meeting.DoeID)
+	doe, err := m.users.GetUser(ctx, meeting.DoeID)
 	if err != nil {
 		return 0, err
 	}
@@ -221,11 +221,11 @@ func (m *Meeting) GetPartnerUsername(ctx context.Context, meetingID int64, teleg
 		return "", err
 	}
 
-	dill, err := m.users.GetUserByID(ctx, meeting.DillID)
+	dill, err := m.users.GetUser(ctx, meeting.DillID)
 	if err != nil {
 		return "", err
 	}
-	doe, err := m.users.GetUserByID(ctx, meeting.DoeID)
+	doe, err := m.users.GetUser(ctx, meeting.DoeID)
 	if err != nil {
 		return "", err
 	}
