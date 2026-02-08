@@ -36,6 +36,8 @@ func main() {
 
 	slog.SetDefault(slog.New(handler))
 
+	slog.Info("starting...", slog.String("env", c.Env))
+
 	db, err := postgres.New(&c.Postgres)
 	if err != nil {
 		slog.Error("postgresql: failed to connect", sl.Err(err))
