@@ -61,3 +61,11 @@ func (r *Registration) SetReferrer(ctx context.Context, telegramID int64, referr
 func (r *Registration) GetReferralLeaderboard(ctx context.Context, limit int) ([]domain.ReferralLeaderboardEntry, error) {
     return r.users.GetReferralLeaderboard(ctx, limit)
 }
+
+func (r *Registration) GetUserReferralCount(ctx context.Context, referrerID int64) (int, error) {
+    return r.users.GetUserReferralCount(ctx, referrerID)
+}
+
+func (r *Registration) GetUserLeaderboardPosition(ctx context.Context, userID int64) (int, error) {
+    return r.users.GetUserLeaderboardPosition(ctx, userID)
+}

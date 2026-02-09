@@ -294,3 +294,44 @@ func (r *UserRepo) GetReferralLeaderboard(ctx context.Context, limit int) ([]dom
     
     return leaderboard, rows.Err()
 }
+
+func (r *UserRepo) GetUserReferralCount(ctx context.Context, referrerID int64) (int, error) {
+    var count int
+    err := r.db.QueryRowContext(ctx, `
+        SELECT COUNT(*) 
+        FROM users 
+        WHERE referrer_id = $1
+    `, referrerID).Scan(&count)
+    if err != nil {
+        return 0, err
+    }
+    return count, nil
+}
+
+func (r *UserRepo) GetUserLeaderboardPosition(ctx context.Context, userID int64) (int, error) {
+    var position sql.NullInt32
+    err := r.db.QueryRowContext(ctx, `
+        WITH ranked_users AS (
+            SELECT 
+                referrer_id,
+                ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) as rank
+            FROM users
+            WHERE referrer_id IS NOT NULL
+            GROUP BY referrer_id
+        )
+        SELECT rank FROM ranked_users WHERE referrer_id = $1
+    `, userID).Scan(&position)
+    
+    if err != nil {
+        if errors.Is(err, sql.ErrNoRows) {
+            return 0, nil
+        }
+        return 0, err
+    }
+    
+    if !position.Valid {
+        return 0, nil
+    }
+    
+    return int(position.Int32), nil
+}

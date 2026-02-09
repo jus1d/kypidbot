@@ -24,74 +24,87 @@ func (h *Handler) Leaderboard(c tele.Context) error {
             sl.Err(err), 
             "user_id", sender.ID)
         
-        return c.Send("Произошла ошибка при получении лидерборда 😔", tele.ModeMarkdown)
+        return c.Send(messages.M.Command.Leaderboard.Error)
     }
     
-    if len(leaderboard) == 0 {
-        return c.Send(messages.M.Command.Leaderboard.Empty, tele.ModeMarkdown)
+    userReferralCount, err := h.Registration.GetUserReferralCount(context.Background(), sender.ID)
+    if err != nil {
+        slog.Error("failed to get user referral count", 
+            sl.Err(err), 
+            "user_id", sender.ID)
+        userReferralCount = 0
     }
+    
+    userPosition, err := h.Registration.GetUserLeaderboardPosition(context.Background(), sender.ID)
+    if err != nil {
+        slog.Error("failed to get user leaderboard position", 
+            sl.Err(err), 
+            "user_id", sender.ID)
+        userPosition = 0
+    }
+    
+    userInTop := false
+    for _, entry := range leaderboard {
+        if entry.ReferrerID == sender.ID {
+            userInTop = true
+            break
+        }
+    }
+
+	userDisplayName := h.formatDisplayName(sender.ID, sender.Username, sender.FirstName)
     
     var messageBuilder strings.Builder
     
-    // Добавляем заголовок
-    messageBuilder.WriteString(messages.M.Command.Leaderboard.Title) // ← ИЗМЕНИЛИ
+    messageBuilder.WriteString(messages.M.Command.Leaderboard.Title)
     messageBuilder.WriteString("\n\n")
     
-    // Добавляем места с эмодзи
-    for i, entry := range leaderboard {
-        // Определяем эмодзи для места
-        var emoji string
-        switch i {
-        case 0:
-            emoji = "🥇"
-        case 1:
-            emoji = "🥇"
-        case 2:
-            emoji = "🥇"
-        default:
-            emoji = fmt.Sprintf("%d.", i+1)
+    if len(leaderboard) == 0 {
+        messageBuilder.WriteString(messages.M.Command.Leaderboard.Empty)
+    } else {
+        for i, entry := range leaderboard {
+            var emoji string
+            switch i {
+            case 0:
+                emoji = "🥇"
+            case 1:
+                emoji = "🥈"
+            case 2:
+                emoji = "🥉"
+            default:
+                emoji = fmt.Sprintf("%d.", i+1)
+            }
+            
+            displayName := h.formatDisplayName(entry.ReferrerID, entry.Username, entry.FirstName)
+            
+            messageBuilder.WriteString(fmt.Sprintf(
+                "%s %s — %d\n",
+                emoji,
+                displayName,
+                entry.ReferralCount,
+            ))
         }
-        
-        // Определяем имя пользователя для отображения
-        displayName := entry.FirstName
-        if entry.Username != "" {
-            displayName = "@" + entry.Username
-        } else if entry.FirstName == "" {
-            displayName = fmt.Sprintf("ID: %d", entry.ReferrerID)
+		
+        if !userInTop && userPosition > 0 && userReferralCount > 0 {
+            messageBuilder.WriteString("\n")
+            messageBuilder.WriteString(fmt.Sprintf(
+                "%d. %s — %d\n",
+                userPosition,
+                userDisplayName,
+                userReferralCount,
+            ))
         }
-        
-        // Форматируем строку
-        messageBuilder.WriteString(fmt.Sprintf(
-            "%s %s — *%d* %s\n",
-            emoji,
-            displayName,
-            entry.ReferralCount,
-            h.pluralizeReferrals(entry.ReferralCount),
-        ))
     }
     
-    // Добавляем разделитель и информацию о текущем пользователе
-    messageBuilder.WriteString("\n" + messages.M.Command.Leaderboard.Footer) // ← ИЗМЕНИЛИ
+    messageBuilder.WriteString("\n" + messages.M.Command.Leaderboard.Footer)
     
-    // Отправляем сообщение
-    return c.Send(messageBuilder.String(), tele.ModeMarkdown)
+    return c.Send(messageBuilder.String())
 }
 
-// Вспомогательная функция для правильного склонения слова "реферал"
-func (h *Handler) pluralizeReferrals(count int) string {
-    lastDigit := count % 10
-    lastTwoDigits := count % 100
-    
-    if lastTwoDigits >= 11 && lastTwoDigits <= 14 {
-        return "рефералов"
+func (h *Handler) formatDisplayName(userID int64, username, firstName string) string {
+    if username != "" {
+        return "@" + username
+    } else if firstName != "" {
+        return firstName
     }
-    
-    switch lastDigit {
-    case 1:
-        return "реферал"
-    case 2, 3, 4:
-        return "реферала"
-    default:
-        return "рефералов"
-    }
+    return fmt.Sprintf("ID: %d", userID)
 }
