@@ -38,7 +38,7 @@ func (h *Handler) Invite(c tele.Context) error {
 	}
 
 	link := fmt.Sprintf("https://t.me/%s?start=%s", h.Bot.Me.Username, code)
-	text := messages.Format(messages.M.Command.Invite, map[string]string{"link": link})
+	text := messages.Format(messages.M.Notifications.Invite, map[string]string{"link": link})
 
 	return c.Send(text)
 }

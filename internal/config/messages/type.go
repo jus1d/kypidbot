@@ -57,10 +57,9 @@ type ScheduleSection struct {
 }
 
 type CommandSection struct {
-	About   string                   `yaml:"about" env-required:"true"`
-	Invite  string                   `yaml:"invite" env-required:"true"`
-	Support SupportSection           `yaml:"support" env-required:"true"`
-	Leaderboard  LeaderboardSection  `yaml:"leaderboard" env-required:"true"`
+	About       string             `yaml:"about" env-required:"true"`
+	Support     SupportSection     `yaml:"support" env-required:"true"`
+	Leaderboard LeaderboardSection `yaml:"leaderboard" env-required:"true"`
 }
 
 type SupportSection struct {
