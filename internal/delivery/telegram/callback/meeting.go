@@ -65,14 +65,14 @@ func (h *Handler) ConfirmMeeting(c tele.Context) error {
 			slog.Error("edit confirmation message", sl.Err(err))
 		}
 
-		h.storeMessageID(fmt.Sprintf("original_msg_%d_%d", meetingID, telegramID), origmsg.ID)
+		_ = h.UserMessages.StoreMessageID(context.Background(), meetingID, telegramID, "original_msg", origmsg.ID)
 
 		if partnerID != 0 {
 			msg, err := h.Bot.Send(&tele.User{ID: partnerID}, messages.M.Meeting.Status.PartnerConfirmed)
 			if err != nil {
 				slog.Error("send partner confirmed", sl.Err(err), "partner_id", partnerID)
 			} else {
-				h.storeMessageID(fmt.Sprintf("partner_msg_%d_%d", meetingID, partnerID), msg.ID)
+				_ = h.UserMessages.StoreMessageID(context.Background(), meetingID, partnerID, "partner_msg", msg.ID)
 			}
 		}
 		return nil
@@ -92,13 +92,13 @@ func (h *Handler) ConfirmMeeting(c tele.Context) error {
 			slog.Error("send both confirmed to user", sl.Err(err))
 		}
 
-		partnerNotifID := h.getMessageID(fmt.Sprintf("partner_msg_%d_%d", meetingID, telegramID))
+		partnerNotifID, _ := h.UserMessages.GetMessageID(context.Background(), meetingID, telegramID, "partner_msg")
 		if partnerNotifID != 0 {
 			_ = h.Bot.Delete(&tele.Message{Chat: &tele.Chat{ID: telegramID}, ID: partnerNotifID})
 		}
 
 		if partnerID != 0 {
-			partnerOriginalID := h.getMessageID(fmt.Sprintf("original_msg_%d_%d", meetingID, partnerID))
+			partnerOriginalID, _ := h.UserMessages.GetMessageID(context.Background(), meetingID, partnerID, "original_msg")
 			if partnerOriginalID != 0 {
 				_ = h.Bot.Delete(&tele.Message{Chat: &tele.Chat{ID: partnerID}, ID: partnerOriginalID})
 			}

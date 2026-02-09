@@ -25,9 +25,10 @@ type Bot struct {
 	matching     *usecase.Matching
 	meeting      *usecase.Meeting
 	users        domain.UserRepository
+	userMessages domain.UserMessageRepository
 }
 
-func NewBot(env string, token string, registration *usecase.Registration, admin *usecase.Admin, matching *usecase.Matching, meeting *usecase.Meeting, users domain.UserRepository) (*Bot, error) {
+func NewBot(env string, token string, registration *usecase.Registration, admin *usecase.Admin, matching *usecase.Matching, meeting *usecase.Meeting, users domain.UserRepository, userMessages domain.UserMessageRepository) (*Bot, error) {
 	pref := tele.Settings{
 		Token:     token,
 		Poller:    &tele.LongPoller{Timeout: 10 * time.Second},
@@ -47,6 +48,7 @@ func NewBot(env string, token string, registration *usecase.Registration, admin 
 		matching:     matching,
 		meeting:      meeting,
 		users:        users,
+		userMessages: userMessages,
 	}, nil
 }
 
@@ -63,6 +65,7 @@ func (b *Bot) Setup() {
 		Registration: b.registration,
 		Meeting:      b.meeting,
 		Users:        b.users,
+		UserMessages: b.userMessages,
 		Bot:          b.bot,
 	}
 

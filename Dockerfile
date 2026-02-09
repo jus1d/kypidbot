@@ -11,7 +11,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 go build -o migrate ./cmd/migrate
 RUN CGO_ENABLED=0 go build -a -ldflags "-w -s \
-    -X github.com/jus1d/kypidbot/internal/version.Commit=$(git rev-parse --short HEAD) \
+    -X github.com/jus1d/kypidbot/internal/version.Commit=$(git describe --always --dirty --abbrev=7) \
     -X github.com/jus1d/kypidbot/internal/version.Branch=$(git rev-parse --abbrev-ref HEAD)" \
     -o kypidbot ./cmd/bot
 

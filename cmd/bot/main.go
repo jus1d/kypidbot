@@ -51,6 +51,7 @@ func main() {
 	userRepo := postgres.NewUserRepo(db)
 	placeRepo := postgres.NewPlaceRepo(db)
 	meetingRepo := postgres.NewMeetingRepo(db)
+	userMessageRepo := postgres.NewUserMessageRepo(db)
 
 	registration := usecase.NewRegistration(userRepo)
 	admin := usecase.NewAdmin(userRepo)
@@ -65,6 +66,7 @@ func main() {
 		matching,
 		meeting,
 		userRepo,
+		userMessageRepo,
 	)
 	if err != nil {
 		slog.Error("failed to create the bot", sl.Err(err))
