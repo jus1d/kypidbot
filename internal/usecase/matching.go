@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jus1d/kypidbot/internal/config"
+	"github.com/jus1d/kypidbot/internal/infrastructure/ollama"
 	"github.com/jus1d/kypidbot/internal/domain"
 	"github.com/jus1d/kypidbot/internal/matcher"
 )
@@ -18,10 +18,10 @@ type MatchResult struct {
 type Matching struct {
 	users    domain.UserRepository
 	meetings domain.MeetingRepository
-	ollama   *config.Ollama
+	ollama   *ollama.Client
 }
 
-func NewMatching(users domain.UserRepository, meetings domain.MeetingRepository, c *config.Ollama) *Matching {
+func NewMatching(users domain.UserRepository, meetings domain.MeetingRepository, c *ollama.Client) *Matching {
 	return &Matching{
 		users:    users,
 		meetings: meetings,

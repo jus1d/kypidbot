@@ -1,4 +1,4 @@
-package matcher
+package ollama
 
 import (
 	"bytes"
@@ -6,32 +6,29 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/jus1d/kypidbot/internal/config"
 )
 
-type embeddingRequest struct {
+type EmbeddingRequest struct {
 	Model  string `json:"model"`
 	Prompt string `json:"prompt"`
 }
 
-type embeddingResponse struct {
+type EmbeddingResponse struct {
 	Embedding []float64 `json:"embedding"`
 }
 
-func getEmbedding(text string, ollama *config.Ollama) ([]float64, error) {
-	reqBody := embeddingRequest{
-		Model:  ollama.Model,
+func (c *Client) GetEmbedding(text string) ([]float64, error) {
+	req := EmbeddingRequest{
+		Model:  c.model,
 		Prompt: text,
 	}
 
-	jsonData, err := json.Marshal(reqBody)
+	data, err := json.Marshal(req)
 	if err != nil {
 		return nil, fmt.Errorf("marshal embedding request: %w", err)
 	}
 
-	ollamaURL := fmt.Sprintf("%s:%s", ollama.Host, ollama.Port)
-	resp, err := http.Post(ollamaURL+"/api/embeddings", "application/json", bytes.NewBuffer(jsonData))
+	resp, err := http.Post(c.url+"/api/embeddings", "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		return nil, fmt.Errorf("ollama request: %w", err)
 	}
@@ -46,7 +43,7 @@ func getEmbedding(text string, ollama *config.Ollama) ([]float64, error) {
 		return nil, fmt.Errorf("ollama returned status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var embResp embeddingResponse
+	var embResp EmbeddingResponse
 	if err := json.Unmarshal(body, &embResp); err != nil {
 		return nil, fmt.Errorf("unmarshal embedding response: %w", err)
 	}
@@ -54,15 +51,15 @@ func getEmbedding(text string, ollama *config.Ollama) ([]float64, error) {
 	return embResp.Embedding, nil
 }
 
-func getEmbeddings(texts []string, ollama *config.Ollama) ([][]float64, error) {
+func (c *Client) GetEmbeddings(texts []string) ([][]float64, error) {
 	embeddings := make([][]float64, len(texts))
 
 	for i, text := range texts {
-		emb, err := getEmbedding(text, ollama)
+		e, err := c.GetEmbedding(text)
 		if err != nil {
 			return nil, fmt.Errorf("get embedding for text %d: %w", i, err)
 		}
-		embeddings[i] = emb
+		embeddings[i] = e
 	}
 
 	return embeddings, nil

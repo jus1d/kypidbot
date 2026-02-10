@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/jus1d/kypidbot/internal/config"
+	"github.com/jus1d/kypidbot/internal/infrastructure/ollama"
 	"github.com/jus1d/kypidbot/internal/matcher"
 )
 
@@ -42,11 +43,11 @@ func main() {
 		log.Fatalf("parse input file: %v", err)
 	}
 
-	ollama := &config.Ollama{
+	ollama := ollama.New(&config.Ollama{
 		Host:  *ollamaHost,
 		Port:  *ollamaPort,
 		Model: *ollamaModel,
-	}
+	})
 
 	scores, err := matcher.MatchByScore(abouts, ollama)
 	if err != nil {

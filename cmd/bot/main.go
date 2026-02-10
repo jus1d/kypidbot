@@ -10,6 +10,7 @@ import (
 
 	"github.com/jus1d/kypidbot/internal/config"
 	"github.com/jus1d/kypidbot/internal/delivery/telegram"
+	"github.com/jus1d/kypidbot/internal/infrastructure/ollama"
 	"github.com/jus1d/kypidbot/internal/lib/logger/daily"
 	"github.com/jus1d/kypidbot/internal/lib/logger/sl"
 	"github.com/jus1d/kypidbot/internal/notifications"
@@ -39,6 +40,22 @@ func main() {
 
 	slog.Info("bot: starting...", slog.String("env", c.Env), version.CommitAttr, version.BranchAttr)
 
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+
+	ollama := ollama.New(&c.Ollama)
+	go func() {
+		slog.Info("ollama: pulling model...", slog.String("model", c.Ollama.Model))
+		err := ollama.PullModel()
+		if err != nil {
+			slog.Error("failed to pull ollama model", slog.String("model", c.Ollama.Model), sl.Err(err))
+			stop <- syscall.SIGTERM
+			return
+		}
+
+		slog.Info("ollama: ok", slog.String("model", c.Ollama.Model))
+	}()
+
 	db, err := postgres.New(&c.Postgres)
 	if err != nil {
 		slog.Error("postgresql: failed to connect", sl.Err(err))
@@ -55,7 +72,7 @@ func main() {
 
 	registration := usecase.NewRegistration(userRepo)
 	admin := usecase.NewAdmin(userRepo)
-	matching := usecase.NewMatching(userRepo, meetingRepo, &c.Ollama)
+	matching := usecase.NewMatching(userRepo, meetingRepo, ollama)
 	meeting := usecase.NewMeeting(userRepo, placeRepo, meetingRepo)
 
 	bot, err := telegram.NewBot(
@@ -74,9 +91,6 @@ func main() {
 	}
 
 	bot.Setup()
-
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	notificator := notifications.New(&c.Notifications, bot.TeleBot(), userRepo, placeRepo, meetingRepo)
