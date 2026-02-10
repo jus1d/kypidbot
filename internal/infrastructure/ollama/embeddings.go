@@ -18,6 +18,13 @@ type EmbeddingResponse struct {
 }
 
 func (c *Client) GetEmbedding(text string) ([]float64, error) {
+	if c.maxLength > 0 {
+		runes := []rune(text)
+		if len(runes) > c.maxLength {
+			text = string(runes[:c.maxLength])
+		}
+	}
+
 	req := EmbeddingRequest{
 		Model:  c.model,
 		Prompt: text,

@@ -36,9 +36,10 @@ type Notifications struct {
 }
 
 type Ollama struct {
-	Host  string `yaml:"host" env-required:"true"`
-	Port  string `yaml:"port" env-required:"true"`
-	Model string `yaml:"model" env-required:"true"`
+	Host      string `yaml:"host" env-required:"true"`
+	Port      string `yaml:"port" env-required:"true"`
+	Model     string `yaml:"model" env-required:"true"`
+	MaxLength int    `yaml:"max_length" env-default:"512"`
 }
 
 type Postgres struct {
