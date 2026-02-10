@@ -76,9 +76,11 @@ command:
     cancelled: "Обращение в поддержку отменено"
 
   statistics: |
-    Новые пользователи:
+    <b>Новые пользователи:</b>
     - за 24ч: {registered_daily}
     - за неделю: {registered_weekly}
+
+    <b>Половое распределение:</b> {male_count}М/{female_count}Ж
 
 registration:
   completed: |

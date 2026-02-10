@@ -365,3 +365,15 @@ func (r *UserRepo) GetLastRegisteredCount(ctx context.Context) (daily uint, week
 
 	return daily, weekly, nil
 }
+
+func (r *UserRepo) GetSexCounts(ctx context.Context) (males uint, females uint, err error) {
+	row := r.db.QueryRowContext(ctx, `SELECT
+		COUNT(*) FILTER (WHERE sex = 'male') AS males,
+		COUNT(*) FILTER (WHERE sex = 'female') AS females
+		FROM users WHERE state = 'completed'`)
+	err = row.Scan(&males, &females)
+	if err != nil {
+		return 0, 0, err
+	}
+	return males, females, nil
+}

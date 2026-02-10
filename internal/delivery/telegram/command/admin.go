@@ -88,6 +88,8 @@ func (h *Handler) Statistics(c tele.Context) error {
 	content := messages.Format(format, map[string]string{
 		"registered_daily":  fmt.Sprintf("%s%d", prefixDaily, s.RegisteredDaily),
 		"registered_weekly": fmt.Sprintf("%s%d", prefixWeekly, s.RegisteredWeekly),
+		"male_count":        fmt.Sprintf("%d", s.MaleCount),
+		"female_count":      fmt.Sprintf("%d", s.FemaleCount),
 	})
 
 	return c.Send(content)

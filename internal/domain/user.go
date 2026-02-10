@@ -72,6 +72,7 @@ type UserRepository interface {
 	MarkInviteNotified(ctx context.Context, telegramID int64) error
 	SetOptedOut(ctx context.Context, telegramID int64, optedOut bool) error
 	GetLastRegisteredCount(ctx context.Context) (daily uint, weekly uint, err error)
+	GetSexCounts(ctx context.Context) (males uint, females uint, err error)
 }
 
 const (
