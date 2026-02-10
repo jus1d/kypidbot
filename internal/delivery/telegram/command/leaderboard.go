@@ -75,11 +75,11 @@ func (h *Handler) Leaderboard(c tele.Context) error {
         ))
     }
     
-    if !userInTop && userPosition > 0 {
+    if !userInTop && userPosition > 0 && userPosition <= len(fullLeaderboard) {
         messageBuilder.WriteString("\n")
-        
+
         userDisplayName := h.formatDisplayName(sender.ID, sender.Username, sender.FirstName)
-        
+
         messageBuilder.WriteString(fmt.Sprintf(
             "%d. %s -- %d\n",
             userPosition,

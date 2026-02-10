@@ -64,7 +64,7 @@ func (h *Handler) MM(c tele.Context) error {
 		if errors.Is(err, usecase.ErrNoPlaces) {
 			return c.Send(messages.M.Matching.Errors.NoPlaces)
 		}
-		return nil
+		return c.Send(fmt.Sprintf("Ошибка при создании встреч: %v", err))
 	}
 
 	count := 0

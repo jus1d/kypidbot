@@ -23,12 +23,12 @@ func (h *Handler) ConfirmMeeting(c tele.Context) error {
 
 	telegramID := c.Sender().ID
 
-	ok, err := h.Meeting.ConfirmMeeting(context.Background(), meetingID, telegramID)
+	both, meeting, err := h.Meeting.ConfirmMeeting(context.Background(), meetingID, telegramID)
 	if err != nil {
 		slog.Error("confirm meeting", sl.Err(err))
 		return c.Respond()
 	}
-	if !ok {
+	if meeting == nil {
 		return c.Respond()
 	}
 
@@ -42,16 +42,14 @@ func (h *Handler) ConfirmMeeting(c tele.Context) error {
 		return nil
 	}
 
-	both, meeting, err := h.Meeting.BothConfirmed(context.Background(), meetingID)
-	if err != nil {
-		slog.Error("check both confirmed", sl.Err(err))
-		return nil
-	}
-
 	if !both {
-		place := ""
-		if meeting != nil && meeting.PlaceID != nil && meeting.Time != nil {
-			place, err = h.Meeting.GetPlaceDescription(context.Background(), *meeting.PlaceID)
+		if meeting == nil || meeting.PlaceID == nil || meeting.Time == nil {
+			slog.Error("meeting data incomplete", "meeting_id", meetingID)
+			return nil
+		}
+
+		place, err := h.Meeting.GetPlaceDescription(context.Background(), *meeting.PlaceID)
+		if err != nil {
 			slog.Error("get place description", sl.Err(err))
 		}
 

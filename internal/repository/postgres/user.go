@@ -97,10 +97,9 @@ func (r *UserRepo) SetUserAbout(ctx context.Context, telegramID int64, about str
 
 func (r *UserRepo) GetTimeRanges(ctx context.Context, telegramID int64) (string, error) {
 	var tr string
-	err := r.db.QueryRowContext(ctx,
-		`SELECT time_ranges FROM users WHERE telegram_id = $1`, telegramID).Scan(&tr)
+	err := r.db.QueryRowContext(ctx, `SELECT time_ranges FROM users WHERE telegram_id = $1`, telegramID).Scan(&tr)
 	if errors.Is(err, sql.ErrNoRows) {
-		return "000000", nil
+		return "", fmt.Errorf("user %d not found", telegramID)
 	}
 	return tr, err
 }
@@ -144,7 +143,7 @@ func (r *UserRepo) GetVerifiedUsers(ctx context.Context) ([]domain.User, error) 
 		SELECT telegram_id, username, first_name, last_name, is_bot,
 		       language_code, is_premium, sex, about, state, registration_notified, invite_notified, time_ranges, is_admin, opted_out, is_registered,
 		       referral_code, referrer_id, created_at
-		FROM users WHERE state = 'completed' AND opted_out = FALSE`)
+		FROM users WHERE is_registered = TRUE AND opted_out = FALSE`)
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +374,7 @@ func (r *UserRepo) GetSexCounts(ctx context.Context) (males uint, females uint, 
 	row := r.db.QueryRowContext(ctx, `SELECT
 		COUNT(*) FILTER (WHERE sex = 'male') AS males,
 		COUNT(*) FILTER (WHERE sex = 'female') AS females
-		FROM users WHERE state = 'completed'`)
+		FROM users WHERE is_registered = TRUE AND opted_out = FALSE`)
 	err = row.Scan(&males, &females)
 	if err != nil {
 		return 0, 0, err
