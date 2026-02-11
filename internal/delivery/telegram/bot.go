@@ -106,6 +106,7 @@ func (b *Bot) Setup() {
 	b.bot.Handle("/promote", cmd.Promote, b.AdminOnly)
 	b.bot.Handle("/demote", cmd.Demote, b.AdminOnly)
 	b.bot.Handle("/admin", cmd.AdminPanel, b.AdminOnly)
+	b.bot.Handle("/remind", cmd.Remind, b.AdminOnly)
 
 	b.bot.Handle(&btnSexMale, cb.Sex)
 	b.bot.Handle(&btnSexFemale, cb.Sex)
