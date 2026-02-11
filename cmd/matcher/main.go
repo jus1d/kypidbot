@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/jus1d/kypidbot/internal/config"
-	"github.com/jus1d/kypidbot/internal/infrastructure/ollama"
+	"github.com/jus1d/kypidbot/internal/infrastructure/gemini"
 	"github.com/jus1d/kypidbot/internal/matcher"
 )
 
@@ -19,9 +19,8 @@ type outputPair struct {
 }
 
 func main() {
-	ollamaHost := flag.String("ollama-host", "http://localhost", "Ollama host")
-	ollamaPort := flag.String("ollama-port", "11434", "Ollama port")
-	ollamaModel := flag.String("ollama-model", "nomic-embed-text", "Ollama model")
+	geminiKey := flag.String("gemini-key", "", "Gemini API key")
+	geminiModel := flag.String("gemini-model", "gemini-embedding-001", "Gemini model")
 	flag.Parse()
 
 	args := flag.Args()
@@ -43,13 +42,12 @@ func main() {
 		log.Fatalf("parse input file: %v", err)
 	}
 
-	ollama := ollama.New(&config.Ollama{
-		Host:  *ollamaHost,
-		Port:  *ollamaPort,
-		Model: *ollamaModel,
+	g := gemini.New(&config.Gemini{
+		APIKey: *geminiKey,
+		Model:  *geminiModel,
 	})
 
-	scores, err := matcher.MatchByScore(abouts, ollama)
+	scores, err := matcher.MatchByScore(abouts, g)
 	if err != nil {
 		log.Fatalf("match by score: %v", err)
 	}

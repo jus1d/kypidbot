@@ -5,7 +5,7 @@ import (
 	"math"
 	"regexp"
 
-	"github.com/jus1d/kypidbot/internal/infrastructure/ollama"
+	"github.com/jus1d/kypidbot/internal/infrastructure/gemini"
 )
 
 type MatchUser struct {
@@ -30,7 +30,7 @@ type FullMatch struct {
 }
 
 // Match matches all users based on product logic: different genders, hungarian algorithm etc.
-func Match(users []MatchUser, ollama *ollama.Client) ([]MatchPair, []FullMatch, error) {
+func Match(users []MatchUser, gemini *gemini.Client) ([]MatchPair, []FullMatch, error) {
 	if len(users) < 2 {
 		return nil, nil, fmt.Errorf("need at least 2 users")
 	}
@@ -40,7 +40,7 @@ func Match(users []MatchUser, ollama *ollama.Client) ([]MatchPair, []FullMatch, 
 		abouts[i] = u.About
 	}
 
-	vectors, err := ollama.GetEmbeddings(abouts)
+	vectors, err := gemini.GetEmbeddings(abouts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("get embeddings: %w", err)
 	}
@@ -190,12 +190,12 @@ type ScorePair struct {
 }
 
 // MatchByScore matches abouts into pairs purely by similarity score using Hungarian algorithm.
-func MatchByScore(abouts []string, ollama *ollama.Client) ([]ScorePair, error) {
+func MatchByScore(abouts []string, gemini *gemini.Client) ([]ScorePair, error) {
 	if len(abouts) < 2 {
 		return nil, fmt.Errorf("need at least 2 abouts")
 	}
 
-	vectors, err := ollama.GetEmbeddings(abouts)
+	vectors, err := gemini.GetEmbeddings(abouts)
 	if err != nil {
 		return nil, fmt.Errorf("get embeddings: %w", err)
 	}

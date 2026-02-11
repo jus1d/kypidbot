@@ -18,7 +18,7 @@ const (
 type Config struct {
 	Env           string        `yaml:"env" env-required:"true"`
 	Bot           Bot           `yaml:"bot" env-required:"true"`
-	Ollama        Ollama        `yaml:"ollama" env-required:"true"`
+	Gemini        Gemini        `yaml:"gemini" env-required:"true"`
 	Postgres      Postgres      `yaml:"postgres" env-required:"true"`
 	Notifications Notifications `yaml:"notifications"`
 }
@@ -35,9 +35,8 @@ type Notifications struct {
 	InviteReminderIn       time.Duration `yaml:"invite_reminder_in" env-default:"10m"`
 }
 
-type Ollama struct {
-	Host      string `yaml:"host" env-required:"true"`
-	Port      string `yaml:"port" env-required:"true"`
+type Gemini struct {
+	APIKey    string `yaml:"api_key" env-required:"true"`
 	Model     string `yaml:"model" env-required:"true"`
 	MaxLength int    `yaml:"max_length" env-default:"512"`
 }

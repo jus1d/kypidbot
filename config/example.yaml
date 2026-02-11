@@ -10,10 +10,9 @@ notifications:
   registration_reminder_in: 24h
   invite_reminder_in: 10m
 
-ollama:
-  host: "http://ollama"
-  port: "11434"
-  model: "model-name" # ollama pull model-name before
+gemini:
+  api_key: "your-gemini-api-key"
+  model: "gemini-embedding-001"
 
 postgres:
   host: "postgres"

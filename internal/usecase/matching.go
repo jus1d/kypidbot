@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jus1d/kypidbot/internal/infrastructure/ollama"
+	"github.com/jus1d/kypidbot/internal/infrastructure/gemini"
 	"github.com/jus1d/kypidbot/internal/domain"
 	"github.com/jus1d/kypidbot/internal/matcher"
 )
@@ -28,14 +28,14 @@ type DryPair struct {
 type Matching struct {
 	users    domain.UserRepository
 	meetings domain.MeetingRepository
-	ollama   *ollama.Client
+	gemini   *gemini.Client
 }
 
-func NewMatching(users domain.UserRepository, meetings domain.MeetingRepository, c *ollama.Client) *Matching {
+func NewMatching(users domain.UserRepository, meetings domain.MeetingRepository, c *gemini.Client) *Matching {
 	return &Matching{
 		users:    users,
 		meetings: meetings,
-		ollama:   c,
+		gemini:   c,
 	}
 }
 
@@ -60,7 +60,7 @@ func (m *Matching) RunMatch(ctx context.Context) (*MatchResult, error) {
 		}
 	}
 
-	pairs, fullMatches, err := matcher.Match(matchUsers, m.ollama)
+	pairs, fullMatches, err := matcher.Match(matchUsers, m.gemini)
 	if err != nil {
 		return nil, fmt.Errorf("match: %w", err)
 	}
@@ -143,7 +143,7 @@ func (m *Matching) DryMatch(ctx context.Context) ([]DryPair, error) {
 		}
 	}
 
-	pairs, fullMatches, err := matcher.Match(matchUsers, m.ollama)
+	pairs, fullMatches, err := matcher.Match(matchUsers, m.gemini)
 	if err != nil {
 		return nil, fmt.Errorf("match: %w", err)
 	}
