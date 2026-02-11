@@ -59,5 +59,9 @@ func (r *Registration) SetReferrer(ctx context.Context, telegramID int64, referr
 }
 
 func (r *Registration) GetReferralLeaderboard(ctx context.Context) ([]domain.ReferralLeaderboardEntry, error) {
-    return r.users.GetReferralLeaderboard(ctx)
+	return r.users.GetReferralLeaderboard(ctx)
+}
+
+func (r *Registration) GetUnregisteredUsers(ctx context.Context) ([]domain.User, error) {
+	return r.users.GetUnregisteredUsers(ctx)
 }

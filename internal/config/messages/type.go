@@ -27,6 +27,7 @@ type StartSection struct {
 }
 
 type NotificationsSection struct {
+	Remind         string `yaml:"remind" env-required:"true"`
 	Registration   string `yaml:"registration" env-required:"true"`
 	Invite         string `yaml:"invite" env-required:"true"`
 	MeetingSoon    string `yaml:"meeting_soon" env-required:"true"`
@@ -61,7 +62,13 @@ type CommandSection struct {
 	Support     SupportSection     `yaml:"support" env-required:"true"`
 	Leaderboard LeaderboardSection `yaml:"leaderboard" env-required:"true"`
 	Admin       string             `yaml:"admin_panel" env-required:"true"`
+	Remind      RemindSection      `yaml:"remind" env-required:"true"`
 	Pairs       PairsSection       `yaml:"pairs" env-required:"true"`
+}
+
+type RemindSection struct {
+	Sent    string `yaml:"sent" env-required:"true"`
+	NoUsers string `yaml:"no_users" env-required:"true"`
 }
 
 type PairsSection struct {

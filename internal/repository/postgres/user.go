@@ -382,6 +382,28 @@ func (r *UserRepo) GetSexCounts(ctx context.Context) (males uint, females uint, 
 	return males, females, nil
 }
 
+func (r *UserRepo) GetUnregisteredUsers(ctx context.Context) ([]domain.User, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT telegram_id, username, first_name, last_name, is_bot,
+		       language_code, is_premium, sex, about, state, registration_notified, invite_notified, time_ranges, is_admin, opted_out, is_registered,
+		       referral_code, referrer_id, created_at
+		FROM users WHERE is_registered = FALSE AND opted_out = FALSE AND is_admin = FALSE`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var users []domain.User
+	for rows.Next() {
+		u, err := scanUserFromRows(rows)
+		if err != nil {
+			return nil, err
+		}
+		users = append(users, *u)
+	}
+	return users, rows.Err()
+}
+
 func (r *UserRepo) GetUserCounts(ctx context.Context) (total uint, registered uint, optedOut uint, err error) {
 	row := r.db.QueryRowContext(ctx, `SELECT
 		COUNT(*) AS total,

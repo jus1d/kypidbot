@@ -75,6 +75,7 @@ type UserRepository interface {
 	GetLastRegisteredCount(ctx context.Context) (daily uint, weekly uint, err error)
 	GetSexCounts(ctx context.Context) (males uint, females uint, err error)
 	GetUserCounts(ctx context.Context) (total uint, registered uint, optedOut uint, err error)
+	GetUnregisteredUsers(ctx context.Context) ([]User, error)
 }
 
 const (

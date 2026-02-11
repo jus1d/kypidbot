@@ -33,7 +33,7 @@ func (h *Handler) Pairs(c tele.Context) error {
 
 	var sb strings.Builder
 	for _, p := range pairs {
-		sb.WriteString(fmt.Sprintf("%s -- %s\n",
+		sb.WriteString(fmt.Sprintf("%s x %s\n",
 			messages.Mention(p.DillTelegramID, p.DillFirstName, p.DillUsername),
 			messages.Mention(p.DoeTelegramID, p.DoeFirstName, p.DoeUsername),
 		))

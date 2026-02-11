@@ -27,4 +27,4 @@ COPY --from=builder /build/migrations ./migrations
 
 RUN apk add --no-cache tzdata
 
-CMD ["sh", "-c", "./migrate up && ./kypidbot"]
+CMD ["sh", "-c", "./migrate up && exec ./kypidbot"]
