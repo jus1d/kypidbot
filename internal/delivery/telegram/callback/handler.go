@@ -2,6 +2,7 @@ package callback
 
 import (
 	"github.com/jus1d/kypidbot/internal/domain"
+	"github.com/jus1d/kypidbot/internal/infrastructure/s3"
 	"github.com/jus1d/kypidbot/internal/usecase"
 	tele "gopkg.in/telebot.v3"
 )
@@ -13,6 +14,7 @@ type Handler struct {
 	Users        domain.UserRepository
 	UserMessages domain.UserMessageRepository
 	Bot          *tele.Bot
+	S3           *s3.Client
 }
 
 func (h *Handler) DeleteAndSend(c tele.Context, what any, opts ...any) error {

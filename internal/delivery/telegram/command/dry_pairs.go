@@ -7,18 +7,20 @@ import (
 	"strings"
 
 	"github.com/jus1d/kypidbot/internal/config/messages"
+	"github.com/jus1d/kypidbot/internal/delivery/telegram/stickers"
 	"github.com/jus1d/kypidbot/internal/lib/logger/sl"
 	tele "gopkg.in/telebot.v3"
 )
 
-func (h *Handler) Pairs(c tele.Context) error {
-	sticker := &tele.Sticker{File: tele.File{FileID: mmSticker}}
+func (h *Handler) DryPairs(c tele.Context) error {
+	ctx := context.Background()
+	sticker := &tele.Sticker{File: tele.File{FileID: stickers.Thinking}}
 	stickerMsg, err := h.Bot.Send(c.Chat(), sticker)
 	if err != nil {
 		slog.Error("send sticker", sl.Err(err))
 	}
 
-	pairs, err := h.Matching.DryMatch(context.Background())
+	pairs, err := h.Matching.DryMatch(ctx)
 	if stickerMsg != nil {
 		_ = h.Bot.Delete(stickerMsg)
 	}

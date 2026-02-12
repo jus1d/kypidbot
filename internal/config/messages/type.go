@@ -84,7 +84,9 @@ type SupportSection struct {
 }
 
 type RegistrationSection struct {
-	Completed string `yaml:"completed" env-required:"true"`
+	Completed        string `yaml:"completed" env-required:"true"`
+	Closed           string `yaml:"closed" env-required:"true"`
+	ClosedRegistered string `yaml:"closed_registered" env-required:"true"`
 }
 
 type UISection struct {
@@ -120,9 +122,11 @@ type StickerSection struct {
 }
 
 type AdminSection struct {
-	Promote    AdminCommand `yaml:"promote" env-required:"true"`
-	Demote     AdminCommand `yaml:"demote" env-required:"true"`
-	StartedLog string       `yaml:"started_log" env-required:"true"`
+	Promote            AdminCommand `yaml:"promote" env-required:"true"`
+	Demote             AdminCommand `yaml:"demote" env-required:"true"`
+	StartedLog         string       `yaml:"started_log" env-required:"true"`
+	RegistrationClosed string       `yaml:"registration_closed" env-required:"true"`
+	RegistrationOpened string       `yaml:"registration_opened" env-required:"true"`
 }
 
 type AdminCommand struct {

@@ -1,0 +1,3 @@
+package stickers
+
+const Thinking = "CAACAgIAAxkBAANtaYKDDtR5d1478iPkCrZr2xnZOpMAAgIBAAJWnb0KTuJsgctA5P84BA"

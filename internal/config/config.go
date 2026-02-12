@@ -20,6 +20,7 @@ type Config struct {
 	Bot           Bot           `yaml:"bot" env-required:"true"`
 	Ollama        Ollama        `yaml:"ollama" env-required:"true"`
 	Postgres      Postgres      `yaml:"postgres" env-required:"true"`
+	S3            S3            `yaml:"s3" env-required:"true"`
 	Notifications Notifications `yaml:"notifications"`
 }
 
@@ -49,6 +50,16 @@ type Postgres struct {
 	Name     string `yaml:"name" env-required:"true"`
 	Password string `yaml:"password" env-required:"true"`
 	ModeSSL  string `yaml:"sslmode" env-required:"true"`
+}
+
+type S3 struct {
+	Host            string `yaml:"host" env-required:"true"`
+	Port            string `yaml:"port" env-required:"true"`
+	AccessKeyID     string `yaml:"access_key_id" env-required:"true"`
+	SecretAccessKey string `yaml:"secret_access_key" env-required:"true"`
+	Bucket          string `yaml:"bucket" env-required:"true"`
+	Region          string `yaml:"region" env-default:"us-east-1"`
+	UseSSL          bool   `yaml:"use_ssl" env-default:"false"`
 }
 
 // MustLoad loads config to a new Config instance and return it

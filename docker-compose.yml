@@ -3,8 +3,8 @@ services:
     image: ghcr.io/jus1d/kypidbot:latest
     build: .
     container_name: kypidbot
-    environment:
-      CONFIG_PATH: ${CONFIG_PATH}
+    env_file:
+      - .env
     volumes:
       - ./config:/app/config
       - ./logs:/app/logs
@@ -14,14 +14,17 @@ services:
         condition: service_healthy
       ollama:
         condition: service_started
+      minio:
+        condition: service_healthy
 
   postgres:
     image: postgres:17-alpine
     container_name: postgres
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: kypidbot
       POSTGRES_DB: kypidbot
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -42,6 +45,24 @@ services:
       - ollama_data:/root/.ollama
     restart: unless-stopped
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    env_file:
+      - ./.env
+    ports:
+      - "31410:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
 volumes:
   pgdata:
   ollama_data:
+  minio_data:

@@ -11,7 +11,7 @@ notifications:
   invite_reminder_in: 10m
 
 ollama:
-  host: "http://ollama"
+  host: "ollama"
   port: "11434"
   model: "model-name" # ollama pull model-name before
 
@@ -22,3 +22,12 @@ postgres:
   name: "kypidbot"
   password: "kypidbot"
   sslmode: "disable"
+
+s3:
+  host: "minio"
+  port: "9000"
+  access_key_id: "admin"
+  secret_access_key: "minioadmin"
+  bucket: "kypidbot-photos"
+  region: "us-east-1"
+  use_ssl: false

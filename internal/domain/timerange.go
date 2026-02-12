@@ -17,7 +17,7 @@ var TimeRanges = []string{
 
 func Timef(t time.Time) string {
 	loc, _ := time.LoadLocation("Europe/Samara")
-	return t.In(loc).Format("02.01 15:04")
+	return t.In(loc).Format("02.01 в 15:04")
 }
 
 func BinaryToSet(binary string) map[string]bool {
@@ -59,6 +59,7 @@ func PickRandomTime(timeIntersection string) string {
 
 	begin := tr[:2]
 	minutes := rand.Intn(12) * 5
+	// minutes := rand.Intn(6) * 10
 
 	return fmt.Sprintf("%s:%02d", begin, minutes)
 }

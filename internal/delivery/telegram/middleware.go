@@ -4,8 +4,39 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/jus1d/kypidbot/internal/config/messages"
+	"github.com/jus1d/kypidbot/internal/domain"
 	tele "gopkg.in/telebot.v3"
 )
+
+func (b *Bot) RegistrationGuard(next tele.HandlerFunc) tele.HandlerFunc {
+	return func(c tele.Context) error {
+		ctx := context.Background()
+
+		value, _ := b.settings.Get(ctx, "registration_closed")
+		closed := value == "true"
+		if !closed {
+			return next(c)
+		}
+
+		isAdmin, _ := b.users.IsAdmin(ctx, c.Sender().ID)
+		if isAdmin {
+			return next(c)
+		}
+
+		user, err := b.users.GetUser(ctx, c.Sender().ID)
+		if err == nil && user != nil {
+			switch user.State {
+			case domain.UserStateAwaitingAppearance, domain.UserStateAwaitingSupport:
+				return next(c)
+			case domain.UserStateCompleted:
+				return c.Send(messages.M.Registration.ClosedRegistered)
+			}
+		}
+
+		return c.Send(messages.M.Registration.Closed)
+	}
+}
 
 func (b *Bot) AdminOnly(next tele.HandlerFunc) tele.HandlerFunc {
 	return func(c tele.Context) error {

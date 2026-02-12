@@ -23,6 +23,10 @@ func (h *Handler) Remind(c tele.Context) error {
 
 	count := 0
 	for _, u := range users {
+		if u.Sex != "female" {
+			continue
+		}
+
 		_, err := h.Bot.Send(&tele.User{ID: u.TelegramID}, messages.M.Notifications.Remind)
 		if err != nil {
 			slog.Error("send remind", sl.Err(err), "telegram_id", u.TelegramID)

@@ -40,6 +40,23 @@ services:
       - ollama_data:/root/.ollama
     restart: unless-stopped
 
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    env_file:
+      - ./minio.env
+    ports:
+      - "31410:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   watchtower:
     image: containrrr/watchtower:latest
     container_name: watchtower

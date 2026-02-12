@@ -11,6 +11,7 @@ import (
 	"github.com/jus1d/kypidbot/internal/delivery/telegram/command"
 	"github.com/jus1d/kypidbot/internal/delivery/telegram/message"
 	"github.com/jus1d/kypidbot/internal/domain"
+	"github.com/jus1d/kypidbot/internal/infrastructure/s3"
 	"github.com/jus1d/kypidbot/internal/lib/logger/sl"
 	"github.com/jus1d/kypidbot/internal/usecase"
 	"github.com/jus1d/kypidbot/internal/version"
@@ -26,9 +27,12 @@ type Bot struct {
 	meeting      *usecase.Meeting
 	users        domain.UserRepository
 	userMessages domain.UserMessageRepository
+	settings     domain.SettingsRepository
+	places       domain.PlaceRepository
+	s3           *s3.Client
 }
 
-func NewBot(env string, token string, registration *usecase.Registration, admin *usecase.Admin, matching *usecase.Matching, meeting *usecase.Meeting, users domain.UserRepository, userMessages domain.UserMessageRepository) (*Bot, error) {
+func NewBot(env string, token string, registration *usecase.Registration, admin *usecase.Admin, matching *usecase.Matching, meeting *usecase.Meeting, users domain.UserRepository, userMessages domain.UserMessageRepository, settings domain.SettingsRepository, places domain.PlaceRepository, s3Client *s3.Client) (*Bot, error) {
 	pref := tele.Settings{
 		Token:     token,
 		Poller:    &tele.LongPoller{Timeout: 10 * time.Second},
@@ -49,6 +53,9 @@ func NewBot(env string, token string, registration *usecase.Registration, admin 
 		meeting:      meeting,
 		users:        users,
 		userMessages: userMessages,
+		settings:     settings,
+		places:       places,
+		s3:           s3Client,
 	}, nil
 }
 
@@ -58,7 +65,10 @@ func (b *Bot) Setup() {
 		Admin:        b.admin,
 		Matching:     b.matching,
 		Meeting:      b.meeting,
+		Settings:     b.settings,
+		Places:       b.places,
 		Bot:          b.bot,
+		S3:           b.s3,
 	}
 
 	cb := &callback.Handler{
@@ -68,6 +78,7 @@ func (b *Bot) Setup() {
 		Users:        b.users,
 		UserMessages: b.userMessages,
 		Bot:          b.bot,
+		S3:           b.s3,
 	}
 
 	msg := &message.Handler{
@@ -93,26 +104,28 @@ func (b *Bot) Setup() {
 
 	b.bot.Use(LogUpdates)
 
-	// user commands
-	b.bot.Handle("/start", cmd.Start)
-	b.bot.Handle("/invite", cmd.Invite)
+	b.bot.Handle("/start", cmd.Start, b.RegistrationGuard)
+	b.bot.Handle("/invite", cmd.Invite, b.RegistrationGuard)
 	b.bot.Handle("/leaderboard", cmd.Leaderboard)
 	b.bot.Handle("/about", cmd.About)
 	b.bot.Handle("/support", cmd.Support)
 
-	// admin commands
-	b.bot.Handle("/mm", cmd.MM, b.AdminOnly)
-	b.bot.Handle("/pairs", cmd.Pairs, b.AdminOnly)
+	b.bot.Handle("/matchpairs", cmd.MatchPairs, b.AdminOnly)
+	b.bot.Handle("/sendinvites", cmd.SendInvites, b.AdminOnly)
+	b.bot.Handle("/drypairs", cmd.DryPairs, b.AdminOnly)
 	b.bot.Handle("/promote", cmd.Promote, b.AdminOnly)
 	b.bot.Handle("/demote", cmd.Demote, b.AdminOnly)
 	b.bot.Handle("/admin", cmd.AdminPanel, b.AdminOnly)
 	b.bot.Handle("/remind", cmd.Remind, b.AdminOnly)
+	b.bot.Handle("/closeregistration", cmd.CloseRegistration, b.AdminOnly)
+	b.bot.Handle("/openregistration", cmd.OpenRegistration, b.AdminOnly)
+	b.bot.Handle("/testimages", cmd.TestImages, b.AdminOnly)
 
-	b.bot.Handle(&btnSexMale, cb.Sex)
-	b.bot.Handle(&btnSexFemale, cb.Sex)
-	b.bot.Handle(&btnTime, cb.Time)
-	b.bot.Handle(&btnConfirmTime, cb.ConfirmTime)
-	b.bot.Handle(&btnResubmit, cb.Resubmit)
+	b.bot.Handle(&btnSexMale, cb.Sex, b.RegistrationGuard)
+	b.bot.Handle(&btnSexFemale, cb.Sex, b.RegistrationGuard)
+	b.bot.Handle(&btnTime, cb.Time, b.RegistrationGuard)
+	b.bot.Handle(&btnConfirmTime, cb.ConfirmTime, b.RegistrationGuard)
+	b.bot.Handle(&btnResubmit, cb.Resubmit, b.RegistrationGuard)
 	b.bot.Handle(&btnConfirmMeeting, cb.ConfirmMeeting)
 	b.bot.Handle(&btnCancelMeeting, cb.CancelMeeting)
 	b.bot.Handle(&btnCancelSupport, cb.CancelSupport)
@@ -122,7 +135,7 @@ func (b *Bot) Setup() {
 	b.bot.Handle(&btnOptOut, cb.OptOut)
 	b.bot.Handle(&btnRefreshAdmin, cb.RefreshAdmin, b.AdminOnly)
 
-	b.bot.Handle(tele.OnText, msg.Text)
+	b.bot.Handle(tele.OnText, msg.Text, b.RegistrationGuard)
 	b.bot.Handle(tele.OnSticker, msg.Sticker, b.AdminOnly)
 }
 

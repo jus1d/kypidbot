@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand"
+	"sort"
 	"time"
 
 	"github.com/jus1d/kypidbot/internal/domain"
@@ -15,6 +16,8 @@ type MeetingNotification struct {
 	DillID    int64
 	DoeID     int64
 	Place     string
+	Route     string
+	PhotoURL  string
 	Time      time.Time
 }
 
@@ -51,6 +54,22 @@ var (
 	ErrNoPairs  = errors.New("matching: no pairs")
 )
 
+const placeBuffer = 45 * time.Minute
+
+type placeBooking struct {
+	placeID int64
+	time    time.Time
+}
+
+func hasEarlySlots(intersection string) bool {
+	for i := 0; i < 4 && i < len(intersection); i++ {
+		if intersection[i] == '1' {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Meeting) CreateMeetings(ctx context.Context) (*MeetResult, error) {
 	regularMeetings, err := m.meetings.GetRegularMeetings(ctx)
 	if err != nil {
@@ -75,6 +94,16 @@ func (m *Meeting) CreateMeetings(ctx context.Context) (*MeetResult, error) {
 		return nil, ErrNoPlaces
 	}
 
+	sort.Slice(places, func(i, j int) bool {
+		return places[i].Quality > places[j].Quality
+	})
+
+	loc, err := time.LoadLocation("Europe/Samara")
+	if err != nil {
+		return nil, fmt.Errorf("load location: %w", err)
+	}
+
+	var bookings []placeBooking
 	var result MeetResult
 
 	for _, mt := range regularMeetings {
@@ -91,25 +120,65 @@ func (m *Meeting) CreateMeetings(ctx context.Context) (*MeetResult, error) {
 			continue
 		}
 
-		place := places[rand.Intn(len(places))]
-		timeIntersection := domain.CalculateTimeIntersection(dill.TimeRanges, doe.TimeRanges)
-		meetingTime := domain.PickRandomTime(timeIntersection)
+		intersection := domain.CalculateTimeIntersection(dill.TimeRanges, doe.TimeRanges)
 
-		// Format: YYYY-MM-DD HH:MM
-		full := fmt.Sprintf("%d-02-14 %s", time.Now().Year(), meetingTime)
-		layout := "2006-01-02 15:04"
-
-		loc, err := time.LoadLocation("Europe/Samara")
-		if err != nil {
-			return nil, fmt.Errorf("load location: %w", err)
+		preferred := intersection
+		if len(intersection) == 6 && hasEarlySlots(intersection) {
+			preferred = intersection[:4] + "00"
 		}
 
-		t, err := time.ParseInLocation(layout, full, loc)
-		if err != nil {
-			return nil, fmt.Errorf("parse time %q: %w", full, err)
+		var assignedPlace *domain.Place
+		var meetingTime time.Time
+		assigned := false
+
+		for attempt := 0; attempt < 50; attempt++ {
+			src := preferred
+			if attempt >= 30 {
+				src = intersection
+			}
+			timeStr := domain.PickRandomTime(src)
+			full := fmt.Sprintf("%d-02-14 %s", time.Now().Year(), timeStr)
+			t, err := time.ParseInLocation("2006-01-02 15:04", full, loc)
+			if err != nil {
+				continue
+			}
+
+			for pi := range places {
+				occupied := false
+				for _, b := range bookings {
+					if b.placeID == places[pi].ID {
+						diff := t.Sub(b.time)
+						if diff < 0 {
+							diff = -diff
+						}
+						if diff < placeBuffer {
+							occupied = true
+							break
+						}
+					}
+				}
+				if !occupied {
+					assignedPlace = &places[pi]
+					meetingTime = t
+					assigned = true
+					break
+				}
+			}
+			if assigned {
+				break
+			}
 		}
 
-		if err := m.meetings.AssignPlaceAndTime(ctx, mt.ID, place.ID, t); err != nil {
+		if !assigned {
+			timeStr := domain.PickRandomTime(intersection)
+			full := fmt.Sprintf("%d-02-14 %s", time.Now().Year(), timeStr)
+			meetingTime, _ = time.ParseInLocation("2006-01-02 15:04", full, loc)
+			assignedPlace = &places[rand.Intn(len(places))]
+		}
+
+		bookings = append(bookings, placeBooking{placeID: assignedPlace.ID, time: meetingTime})
+
+		if err := m.meetings.AssignPlaceAndTime(ctx, mt.ID, assignedPlace.ID, meetingTime); err != nil {
 			return nil, fmt.Errorf("assign place and time: %w", err)
 		}
 
@@ -117,8 +186,10 @@ func (m *Meeting) CreateMeetings(ctx context.Context) (*MeetResult, error) {
 			MeetingID: mt.ID,
 			DillID:    dill.TelegramID,
 			DoeID:     doe.TelegramID,
-			Place:     place.Description,
-			Time:      t,
+			Place:     assignedPlace.Description,
+			Route:     assignedPlace.Route,
+			PhotoURL:  assignedPlace.PhotoURL,
+			Time:      meetingTime,
 		})
 	}
 
@@ -147,6 +218,123 @@ func (m *Meeting) CreateMeetings(ctx context.Context) (*MeetResult, error) {
 	}
 
 	return &result, nil
+}
+
+func (m *Meeting) GetMeetingsForInvites(ctx context.Context) (*MeetResult, error) {
+	regularMeetings, err := m.meetings.GetRegularMeetings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get regular meetings: %w", err)
+	}
+
+	fullMeetings, err := m.meetings.GetFullMeetings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get full meetings: %w", err)
+	}
+
+	if len(regularMeetings) == 0 && len(fullMeetings) == 0 {
+		return nil, ErrNoPairs
+	}
+
+	var result MeetResult
+
+	for _, mt := range regularMeetings {
+		if mt.PlaceID == nil || mt.Time == nil {
+			continue
+		}
+
+		dill, err := m.users.GetUser(ctx, mt.DillID)
+		if err != nil {
+			return nil, fmt.Errorf("get dill: %w", err)
+		}
+		doe, err := m.users.GetUser(ctx, mt.DoeID)
+		if err != nil {
+			return nil, fmt.Errorf("get doe: %w", err)
+		}
+
+		if dill == nil || doe == nil {
+			continue
+		}
+
+		place, err := m.places.GetPlace(ctx, *mt.PlaceID)
+		if err != nil {
+			return nil, fmt.Errorf("get place: %w", err)
+		}
+		if place == nil {
+			continue
+		}
+
+		result.Meetings = append(result.Meetings, MeetingNotification{
+			MeetingID: mt.ID,
+			DillID:    dill.TelegramID,
+			DoeID:     doe.TelegramID,
+			Place:     place.Description,
+			Route:     place.Route,
+			PhotoURL:  place.PhotoURL,
+			Time:      *mt.Time,
+		})
+	}
+
+	for _, mt := range fullMeetings {
+		dill, err := m.users.GetUser(ctx, mt.DillID)
+		if err != nil {
+			return nil, fmt.Errorf("get dill: %w", err)
+		}
+		doe, err := m.users.GetUser(ctx, mt.DoeID)
+		if err != nil {
+			return nil, fmt.Errorf("get doe: %w", err)
+		}
+
+		if dill == nil || doe == nil {
+			continue
+		}
+
+		result.FullMatches = append(result.FullMatches, FullMatchNotification{
+			DillTelegramID: dill.TelegramID,
+			DoeTelegramID:  doe.TelegramID,
+			DillFirstName:  dill.FirstName,
+			DillUsername:   dill.Username,
+			DoeFirstName:   doe.FirstName,
+			DoeUsername:    doe.Username,
+		})
+	}
+
+	return &result, nil
+}
+
+func (m *Meeting) GetUnmatchedUserIDs(ctx context.Context) ([]int64, error) {
+	users, err := m.users.GetVerifiedUsers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get verified users: %w", err)
+	}
+
+	regularMeetings, err := m.meetings.GetRegularMeetings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get regular meetings: %w", err)
+	}
+
+	fullMeetings, err := m.meetings.GetFullMeetings(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("get full meetings: %w", err)
+	}
+
+	matched := make(map[int64]bool)
+	for _, mt := range regularMeetings {
+		matched[mt.DillID] = true
+		matched[mt.DoeID] = true
+	}
+	for _, mt := range fullMeetings {
+		matched[mt.DillID] = true
+		matched[mt.DoeID] = true
+	}
+
+	var unmatched []int64
+	for _, u := range users {
+		if !matched[u.TelegramID] {
+			unmatched = append(unmatched, u.TelegramID)
+		}
+	}
+
+	return unmatched, nil
 }
 
 func (m *Meeting) ConfirmMeeting(ctx context.Context, meetingID int64, telegramID int64) (bool, *domain.Meeting, error) {
@@ -352,15 +540,6 @@ func (m *Meeting) SetCantFind(ctx context.Context, meetingID int64, telegramID i
 	return meeting.DillCantFind, nil
 }
 
-func (m *Meeting) GetPlaceDescription(ctx context.Context, placeID int64) (string, error) {
-	places, err := m.places.GetAllPlaces(ctx)
-	if err != nil {
-		return "", err
-	}
-	for _, p := range places {
-		if p.ID == placeID {
-			return p.Description, nil
-		}
-	}
-	return "", nil
+func (m *Meeting) GetPlace(ctx context.Context, placeID int64) (*domain.Place, error) {
+	return m.places.GetPlace(ctx, placeID)
 }
