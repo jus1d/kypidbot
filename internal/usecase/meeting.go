@@ -543,3 +543,11 @@ func (m *Meeting) SetCantFind(ctx context.Context, meetingID int64, telegramID i
 func (m *Meeting) GetPlace(ctx context.Context, placeID int64) (*domain.Place, error) {
 	return m.places.GetPlace(ctx, placeID)
 }
+
+func (m *Meeting) GetMeetingByUsers(ctx context.Context, dillID, doeID int64) (*domain.Meeting, error) {
+	return m.meetings.GetMeetingByUsers(ctx, dillID, doeID)
+}
+
+func (m *Meeting) AssignPlaceAndTime(ctx context.Context, id int64, placeID int64, t time.Time) error {
+	return m.meetings.AssignPlaceAndTime(ctx, id, placeID, t)
+}

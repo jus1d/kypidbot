@@ -32,6 +32,7 @@ type Meeting struct {
 type MeetingRepository interface {
 	SaveMeeting(ctx context.Context, m *Meeting) error
 	GetMeetingByID(ctx context.Context, id int64) (*Meeting, error)
+	GetMeetingByUsers(ctx context.Context, dillID, doeID int64) (*Meeting, error)
 	GetRegularMeetings(ctx context.Context) ([]Meeting, error)
 	GetFullMeetings(ctx context.Context) ([]Meeting, error)
 	AssignPlaceAndTime(ctx context.Context, id int64, placeID int64, time time.Time) error

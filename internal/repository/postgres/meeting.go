@@ -49,6 +49,28 @@ func (r *MeetingRepo) GetMeetingByID(ctx context.Context, id int64) (*domain.Mee
 	return &m, nil
 }
 
+func (r *MeetingRepo) GetMeetingByUsers(ctx context.Context, dillID, doeID int64) (*domain.Meeting, error) {
+	var m domain.Meeting
+
+	err := r.db.QueryRowContext(ctx, `
+		SELECT id, dill_id, doe_id, pair_score, is_fullmatch,
+		       place_id, time, dill_state, doe_state, users_notified,
+		       dill_cant_find, doe_cant_find
+		FROM meetings WHERE dill_id = $1 AND doe_id = $2`, dillID, doeID).Scan(
+		&m.ID, &m.DillID, &m.DoeID, &m.PairScore, &m.IsFullmatch,
+		&m.PlaceID, &m.Time, &m.DillState, &m.DoeState, &m.UsersNotified,
+		&m.DillCantFind, &m.DoeCantFind,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return &m, nil
+}
+
 func (r *MeetingRepo) GetRegularMeetings(ctx context.Context) ([]domain.Meeting, error) {
 	return r.getMeetingsByFullmatch(ctx, false)
 }

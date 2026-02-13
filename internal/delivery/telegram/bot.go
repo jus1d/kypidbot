@@ -120,6 +120,7 @@ func (b *Bot) Setup() {
 	b.bot.Handle("/closeregistration", cmd.CloseRegistration, b.AdminOnly)
 	b.bot.Handle("/openregistration", cmd.OpenRegistration, b.AdminOnly)
 	b.bot.Handle("/testimages", cmd.TestImages, b.AdminOnly)
+	b.bot.Handle("/ugrumov", cmd.Ugrumov, b.AdminOnly)
 
 	b.bot.Handle(&btnSexMale, cb.Sex, b.RegistrationGuard)
 	b.bot.Handle(&btnSexFemale, cb.Sex, b.RegistrationGuard)
