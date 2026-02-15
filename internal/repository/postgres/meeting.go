@@ -181,8 +181,7 @@ func (r *MeetingRepo) GetMeetingStats(ctx context.Context) (domain.MeetingStats,
 func (r *MeetingRepo) GetTelegramIDsForFeedbackRequest(ctx context.Context) ([]int64, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT dill_id, doe_id FROM meetings
-		WHERE dill_state IN ('confirmed', 'arrived') AND doe_state IN ('confirmed', 'arrived')
-		  AND (dill_state = 'arrived' OR doe_state = 'arrived')`)
+		WHERE dill_state IN ('confirmed', 'arrived') AND doe_state IN ('confirmed', 'arrived')`)
 	if err != nil {
 		return nil, err
 	}

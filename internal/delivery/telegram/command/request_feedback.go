@@ -28,12 +28,12 @@ func (h *Handler) RequestFeedback(c tele.Context) error {
 
 	sent := 0
 	for _, id := range telegramIDs {
-		if err := h.Registration.SetState(ctx, id, domain.UserStateAwaitingFeedback); err != nil {
-			slog.Error("set state awaiting_feedback", sl.Err(err), "telegram_id", id)
-			continue
-		}
 		if _, err := h.Bot.Send(&tele.User{ID: id}, feedbackMsg); err != nil {
 			slog.Error("send feedback request", sl.Err(err), "telegram_id", id)
+			continue
+		}
+		if err := h.Registration.SetState(ctx, id, domain.UserStateAwaitingFeedback); err != nil {
+			slog.Error("set state awaiting_feedback", sl.Err(err), "telegram_id", id)
 			continue
 		}
 		sent++
