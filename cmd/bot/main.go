@@ -78,6 +78,7 @@ func main() {
 	placeRepo := postgres.NewPlaceRepo(db)
 	meetingRepo := postgres.NewMeetingRepo(db)
 	userMessageRepo := postgres.NewUserMessageRepo(db)
+	feedbackRepo := postgres.NewFeedbackRepo(db)
 	settingsRepo := postgres.NewSettingsRepo(db)
 
 	registration := usecase.NewRegistration(userRepo)
@@ -94,6 +95,7 @@ func main() {
 		meeting,
 		userRepo,
 		userMessageRepo,
+		feedbackRepo,
 		settingsRepo,
 		placeRepo,
 		s3с,

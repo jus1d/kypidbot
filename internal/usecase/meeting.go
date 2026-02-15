@@ -543,3 +543,7 @@ func (m *Meeting) SetCantFind(ctx context.Context, meetingID int64, telegramID i
 func (m *Meeting) GetPlace(ctx context.Context, placeID int64) (*domain.Place, error) {
 	return m.places.GetPlace(ctx, placeID)
 }
+
+func (m *Meeting) GetTelegramIDsForFeedbackRequest(ctx context.Context) ([]int64, error) {
+	return m.meetings.GetTelegramIDsForFeedbackRequest(ctx)
+}
