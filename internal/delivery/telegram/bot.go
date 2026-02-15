@@ -27,12 +27,13 @@ type Bot struct {
 	meeting      *usecase.Meeting
 	users        domain.UserRepository
 	userMessages domain.UserMessageRepository
+	feedback     domain.FeedbackRepository
 	settings     domain.SettingsRepository
 	places       domain.PlaceRepository
 	s3           *s3.Client
 }
 
-func NewBot(env string, token string, registration *usecase.Registration, admin *usecase.Admin, matching *usecase.Matching, meeting *usecase.Meeting, users domain.UserRepository, userMessages domain.UserMessageRepository, settings domain.SettingsRepository, places domain.PlaceRepository, s3Client *s3.Client) (*Bot, error) {
+func NewBot(env string, token string, registration *usecase.Registration, admin *usecase.Admin, matching *usecase.Matching, meeting *usecase.Meeting, users domain.UserRepository, userMessages domain.UserMessageRepository, feedback domain.FeedbackRepository, settings domain.SettingsRepository, places domain.PlaceRepository, s3Client *s3.Client) (*Bot, error) {
 	pref := tele.Settings{
 		Token:     token,
 		Poller:    &tele.LongPoller{Timeout: 10 * time.Second},
@@ -53,6 +54,7 @@ func NewBot(env string, token string, registration *usecase.Registration, admin 
 		meeting:      meeting,
 		users:        users,
 		userMessages: userMessages,
+		feedback:     feedback,
 		settings:     settings,
 		places:       places,
 		s3:           s3Client,
@@ -85,6 +87,7 @@ func (b *Bot) Setup() {
 		Registration: b.registration,
 		Meeting:      b.meeting,
 		Users:        b.users,
+		Feedback:     b.feedback,
 		Bot:          b.bot,
 	}
 
@@ -120,6 +123,7 @@ func (b *Bot) Setup() {
 	b.bot.Handle("/closeregistration", cmd.CloseRegistration, b.AdminOnly)
 	b.bot.Handle("/openregistration", cmd.OpenRegistration, b.AdminOnly)
 	b.bot.Handle("/testimages", cmd.TestImages, b.AdminOnly)
+	b.bot.Handle("/requestfeedback", cmd.RequestFeedback, b.AdminOnly)
 
 	b.bot.Handle(&btnSexMale, cb.Sex, b.RegistrationGuard)
 	b.bot.Handle(&btnSexFemale, cb.Sex, b.RegistrationGuard)

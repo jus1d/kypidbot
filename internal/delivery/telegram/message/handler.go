@@ -10,5 +10,6 @@ type Handler struct {
 	Registration *usecase.Registration
 	Meeting      *usecase.Meeting
 	Users        domain.UserRepository
+	Feedback     domain.FeedbackRepository
 	Bot          *tele.Bot
 }

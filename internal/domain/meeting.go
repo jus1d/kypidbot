@@ -42,6 +42,7 @@ type MeetingRepository interface {
 	SetCantFind(ctx context.Context, meetingID int64, isDill bool) error
 	GetArrivedMeetingID(ctx context.Context, telegramID int64) (int64, error)
 	GetMeetingStats(ctx context.Context) (MeetingStats, error)
+	GetTelegramIDsForFeedbackRequest(ctx context.Context) ([]int64, error)
 }
 
 type MeetingStats struct {
