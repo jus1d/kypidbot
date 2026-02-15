@@ -14,6 +14,12 @@ type Messages struct {
 	Error         ErrorSection         `yaml:"error" env-required:"true"`
 	Matching      MatchingSection      `yaml:"matching" env-required:"true"`
 	Meeting       MeetingSection       `yaml:"meeting" env-required:"true"`
+	Feedback      FeedbackSection      `yaml:"feedback" env-required:"true"`
+}
+
+type FeedbackSection struct {
+	Request string `yaml:"request" env-required:"true"`
+	ThankYou string `yaml:"thank_you" env-required:"true"`
 }
 
 type BotSection struct {

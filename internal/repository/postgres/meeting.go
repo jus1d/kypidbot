@@ -177,3 +177,32 @@ func (r *MeetingRepo) GetMeetingStats(ctx context.Context) (domain.MeetingStats,
 	}
 	return s, nil
 }
+
+func (r *MeetingRepo) GetTelegramIDsForFeedbackRequest(ctx context.Context) ([]int64, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT dill_id, doe_id FROM meetings
+		WHERE dill_state IN ('confirmed', 'arrived') AND doe_state IN ('confirmed', 'arrived')
+		  AND (dill_state = 'arrived' OR doe_state = 'arrived')`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	seen := make(map[int64]struct{})
+	var ids []int64
+	for rows.Next() {
+		var dillID, doeID int64
+		if err := rows.Scan(&dillID, &doeID); err != nil {
+			return nil, err
+		}
+		if _, ok := seen[dillID]; !ok {
+			seen[dillID] = struct{}{}
+			ids = append(ids, dillID)
+		}
+		if _, ok := seen[doeID]; !ok {
+			seen[doeID] = struct{}{}
+			ids = append(ids, doeID)
+		}
+	}
+	return ids, rows.Err()
+}

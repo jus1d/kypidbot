@@ -16,6 +16,7 @@ const (
 	UserStateAwaitingTime       UserState = "awaiting_time"
 	UserStateAwaitingSupport    UserState = "awaiting_support"
 	UserStateAwaitingAppearance UserState = "awaiting_appearance"
+	UserStateAwaitingFeedback   UserState = "awaiting_feedback"
 	UserStateCompleted          UserState = "completed"
 )
 

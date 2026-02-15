@@ -28,6 +28,8 @@ func (h *Handler) Text(c tele.Context) error {
 		return h.handleAbout(c, sender)
 	case domain.UserStateAwaitingSupport:
 		return h.handleSupport(c, sender)
+	case domain.UserStateAwaitingFeedback:
+		return h.handleFeedback(c, sender)
 	}
 
 	return nil
@@ -110,4 +112,18 @@ func (h *Handler) handleSupport(c tele.Context, sender *tele.User) error {
 	}
 
 	return c.Send(messages.M.Command.Support.ProblemSent)
+}
+
+func (h *Handler) handleFeedback(c tele.Context, sender *tele.User) error {
+	if err := h.Feedback.Save(context.Background(), sender.ID, c.Text()); err != nil {
+		slog.Error("save feedback", sl.Err(err))
+		return nil
+	}
+
+	if err := h.Registration.SetState(context.Background(), sender.ID, domain.UserStateCompleted); err != nil {
+		slog.Error("set state after feedback", sl.Err(err))
+		return nil
+	}
+
+	return c.Send(messages.M.Feedback.ThankYou)
 }
